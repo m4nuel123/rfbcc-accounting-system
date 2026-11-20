@@ -2,6 +2,27 @@ import React, { useEffect, useState } from 'react';
 import { Building2, ChevronDown, ChevronUp, KeyRound, Lock, Moon, ShieldCheck, Sun, User } from 'lucide-react';
 import { LoginResponse } from '../types/erp';
 import { apiLogin, DemoDirectoryEntry, fetchDemoDirectory } from '../utils/apiClient';
+import { INITIAL_ERP_STATE } from '../utils/erpConfig';
+
+const FALLBACK_DEMO_USERS: DemoDirectoryEntry[] = INITIAL_ERP_STATE.users.map((u) => {
+  const emp = INITIAL_ERP_STATE.employees.find((e) => e.id === u.employeeId);
+  const companies = (
+    u.isAdmin
+      ? INITIAL_ERP_STATE.companies.filter((c) => c.isActive)
+      : INITIAL_ERP_STATE.companies.filter(
+          (c) => c.isActive && u.companyAccess.some((ca) => ca.companyId === c.id)
+        )
+  ).map((c) => ({ id: c.id, code: c.code, name: c.name }));
+  return {
+    id: u.id,
+    username: u.username,
+    passwordHint: u.password,
+    employeeName: emp?.name || u.username,
+    roleLabel: u.roleLabel,
+    isAdmin: u.isAdmin,
+    companies,
+  };
+});
 
 interface LoginScreenProps {
   onLoginSuccess: (payload: LoginResponse) => void;
@@ -19,12 +40,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
-  const [demoUsers, setDemoUsers] = useState<DemoDirectoryEntry[]>([]);
+  const [demoUsers, setDemoUsers] = useState<DemoDirectoryEntry[]>(FALLBACK_DEMO_USERS);
 
   useEffect(() => {
     fetchDemoDirectory()
-      .then(setDemoUsers)
-      .catch(() => setDemoUsers([]));
+      .then((list) => {
+        if (Array.isArray(list) && list.length > 0) {
+          setDemoUsers(list);
+        }
+      })
+      .catch(() => {
+        // Keep FALLBACK_DEMO_USERS so testing accounts remain available
+      });
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
