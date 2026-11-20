@@ -40,8 +40,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, employees, onLo
         {/* Left brand panel */}
         <div className="lg:col-span-5 bg-gradient-to-br from-[#123E82] via-[#1B52AA] to-[#2C6FE0] text-white p-8 flex flex-col justify-between">
           <div>
-            <div className="inline-flex items-center gap-3 bg-white/12 px-3.5 py-2 rounded-xl backdrop-blur-xs mb-8">
-              <RfbLogo size="sm" showText={false} />
+            <div className="inline-flex items-center gap-3 mb-8">
+              <RfbLogo size="md" showText={false} />
               <div className="leading-tight">
                 <div className="font-display font-bold text-sm text-white">RFB Construction</div>
                 <div className="text-[11px] text-blue-100">Malaybalay City, Bukidnon</div>
