@@ -341,8 +341,8 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">Tools &amp; Equipment Monitoring</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">Tools &amp; Equipment Monitoring</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Asset registry, borrow/release/return lifecycle, damage &amp; repair tracking, audit trail, and printable Borrower Slips.
           </p>
         </div>
@@ -366,7 +366,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
           <button
             type="button"
             onClick={() => setShowAddTool(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#123E82] bg-blue-50 hover:bg-blue-100 rounded-xl cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#123E82] dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-xl cursor-pointer"
           >
             <Wrench className="w-3.5 h-3.5" /> Register Asset
           </button>
@@ -376,15 +376,15 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
       {/* KPI Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: 'Total Tools', val: kpis.total, color: 'text-slate-900' },
-          { label: 'Available', val: kpis.available, color: 'text-emerald-700' },
-          { label: 'Borrowed', val: kpis.borrowed, color: 'text-[#2C6FE0]' },
-          { label: 'Under Repair', val: kpis.repair, color: 'text-amber-700' },
-          { label: 'Lost / Stolen', val: kpis.lost, color: 'text-red-700' },
-          { label: 'Overdue Returns', val: kpis.overdue.length, color: 'text-red-700' },
+          { label: 'Total Tools', val: kpis.total, color: 'text-slate-900 dark:text-slate-100' },
+          { label: 'Available', val: kpis.available, color: 'text-emerald-700 dark:text-emerald-400' },
+          { label: 'Borrowed', val: kpis.borrowed, color: 'text-[#2C6FE0] dark:text-blue-400' },
+          { label: 'Under Repair', val: kpis.repair, color: 'text-amber-700 dark:text-amber-400' },
+          { label: 'Lost / Stolen', val: kpis.lost, color: 'text-red-700 dark:text-red-400' },
+          { label: 'Overdue Returns', val: kpis.overdue.length, color: 'text-red-700 dark:text-red-400' },
         ].map((k) => (
-          <div key={k.label} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
-            <div className="text-[11px] font-medium text-slate-500">{k.label}</div>
+          <div key={k.label} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs">
+            <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{k.label}</div>
             <div className={`text-xl font-bold font-mono mt-1 tabular-nums ${k.color}`}>{k.val}</div>
           </div>
         ))}
@@ -392,8 +392,8 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
 
       {/* Alerts banner if overdue or lost */}
       {(kpis.overdue.length > 0 || kpis.lost > 0) && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 text-xs text-amber-950">
-          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+        <div className="bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-start gap-3 text-xs text-amber-950 dark:text-amber-200">
+          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div>
             <span className="font-bold">Equipment Attention Required:</span>{' '}
             {kpis.overdue.length > 0 &&
@@ -404,7 +404,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
       )}
 
       {/* Sub-tabs */}
-      <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-xl w-fit">
+      <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl w-fit">
         {(
           [
             { id: 'requests', label: 'Borrow Requests' },
@@ -418,7 +418,9 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
             type="button"
             onClick={() => setTab(t.id)}
             className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-              tab === t.id ? 'bg-white text-[#123E82] shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              tab === t.id
+                ? 'bg-white dark:bg-slate-900 text-[#123E82] dark:text-blue-300 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             {t.label}
@@ -428,9 +430,9 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
 
       {/* Borrow Requests */}
       {tab === 'requests' && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-xs">
           <table className="w-full text-xs min-w-[820px]">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+            <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
               <tr>
                 <th className="px-4 py-3 text-left">Slip No.</th>
                 <th className="px-4 py-3 text-left">Tool / Asset ID</th>
@@ -441,24 +443,24 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {state.borrowRequests.map((br) => {
                 const proj = state.projects.find((p) => p.id === br.projectId);
                 const isPrintable = br.status === 'Approved' || br.status === 'Released' || br.status === 'Returned';
                 const isOverdue = br.status === 'Released' && br.expectedReturnDate < today;
                 return (
-                  <tr key={br.id} className="hover:bg-slate-50/70">
-                    <td className="px-4 py-3 font-mono font-semibold text-[#123E82]">{br.trNo}</td>
+                  <tr key={br.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                    <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300">{br.trNo}</td>
                     <td className="px-4 py-3">
-                      <div className="font-semibold text-slate-900">{br.toolName}</div>
-                      <div className="font-mono text-[11px] text-slate-400">{br.toolAssetCode}</div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">{br.toolName}</div>
+                      <div className="font-mono text-[11px] text-slate-400 dark:text-slate-500">{br.toolAssetCode}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-medium text-slate-900">{br.borrowerName}</div>
-                      <div className="text-[11px] text-slate-500">{br.department}</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{br.borrowerName}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">{br.department}</div>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{proj?.name || br.projectId}</td>
-                    <td className={`px-4 py-3 font-mono ${isOverdue ? 'text-red-700 font-bold' : 'text-slate-600'}`}>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{proj?.name || br.projectId}</td>
+                    <td className={`px-4 py-3 font-mono ${isOverdue ? 'text-red-700 dark:text-red-400 font-bold' : 'text-slate-600 dark:text-slate-400'}`}>
                       {br.expectedReturnDate} {isOverdue ? '(Overdue)' : ''}
                     </td>
                     <td className="px-4 py-3"><StatusText status={br.status} /></td>
@@ -475,7 +477,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                           <button
                             type="button"
                             onClick={() => handleApproveBorrow(br, false)}
-                            className="px-2.5 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg cursor-pointer"
+                            className="px-2.5 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/60 hover:bg-red-100 dark:hover:bg-red-900/60 rounded-lg cursor-pointer"
                           >
                             Reject
                           </button>
@@ -507,7 +509,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                         <button
                           type="button"
                           onClick={() => onOpenPrint({ kind: 'borrower-slip', borrowId: br.id })}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#123E82] bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#123E82] dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg cursor-pointer"
                         >
                           <Printer className="w-3.5 h-3.5" /> Print Slip
                         </button>
@@ -523,9 +525,9 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
 
       {/* Asset Registry */}
       {tab === 'registry' && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-xs">
           <table className="w-full text-xs min-w-[780px]">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+            <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
               <tr>
                 <th className="px-4 py-3 text-left">Asset ID</th>
                 <th className="px-4 py-3 text-left">Tool / Equipment</th>
@@ -536,28 +538,28 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {state.tools.map((t) => {
                 const proj = state.projects.find((p) => p.id === t.projectId);
                 return (
-                  <tr key={t.id}>
-                    <td className="px-4 py-3 font-mono font-semibold text-[#123E82]">{t.assetCode}</td>
+                  <tr key={t.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                    <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300">{t.assetCode}</td>
                     <td className="px-4 py-3">
-                      <div className="font-semibold text-slate-900">{t.name}</div>
-                      <div className="text-[11px] text-slate-500">{t.category}</div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-100">{t.name}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">{t.category}</div>
                     </td>
-                    <td className="px-4 py-3 text-slate-600 font-mono">
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono">
                       {t.brandModel} · {t.serialNo}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{proj?.name || 'Main Warehouse'}</td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">{formatPHP(t.purchaseCost)}</td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{proj?.name || 'Main Warehouse'}</td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-900 dark:text-slate-100">{formatPHP(t.purchaseCost)}</td>
                     <td className="px-4 py-3"><StatusText status={t.status} /></td>
                     <td className="px-4 py-3 text-right whitespace-nowrap space-x-1.5">
                       {(t.status === 'Available' || t.status === 'Borrowed') && (
                         <button
                           type="button"
                           onClick={() => handleReportLost(t)}
-                          className="px-2.5 py-1 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg cursor-pointer"
+                          className="px-2.5 py-1 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/60 hover:bg-red-100 dark:hover:bg-red-900/60 rounded-lg cursor-pointer"
                         >
                           Report Lost
                         </button>
@@ -566,7 +568,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                         <button
                           type="button"
                           onClick={() => handleMarkRecovered(t)}
-                          className="px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg cursor-pointer"
+                          className="px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 rounded-lg cursor-pointer"
                         >
                           Mark Recovered
                         </button>
@@ -575,7 +577,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                         <button
                           type="button"
                           onClick={() => setDisposeTool(t)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg cursor-pointer"
                         >
                           <Trash2 className="w-3 h-3" /> Dispose
                         </button>
@@ -592,21 +594,21 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
       {/* Repairs & Disposal */}
       {tab === 'repairs' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-            <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2 text-sm font-bold text-slate-900">
-              <Hammer className="w-4 h-4 text-amber-600" /> Repair Logs
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
+              <Hammer className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Repair Logs
             </div>
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {state.repairRecords.map((rep) => (
                 <div key={rep.id} className="p-4 text-xs space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-[#123E82]">
+                    <span className="font-mono font-bold text-[#123E82] dark:text-blue-300">
                       {rep.assetCode} · {rep.toolName}
                     </span>
                     <StatusText status={rep.status} />
                   </div>
-                  <div className="text-slate-600">{rep.issueDescription}</div>
-                  <div className="flex items-center justify-between text-slate-500">
+                  <div className="text-slate-600 dark:text-slate-300">{rep.issueDescription}</div>
+                  <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
                     <span>
                       {rep.technician} · Sent {rep.dateSent}
                     </span>
@@ -625,23 +627,23 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-            <div className="px-5 py-3.5 border-b border-slate-100 text-sm font-bold text-slate-900">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 text-sm font-bold text-slate-900 dark:text-slate-100">
               Disposal Records
             </div>
             {state.disposalRecords.length === 0 ? (
-              <div className="p-6 text-xs text-slate-500">No assets have been disposed yet.</div>
+              <div className="p-6 text-xs text-slate-500 dark:text-slate-400">No assets have been disposed yet.</div>
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {state.disposalRecords.map((d) => (
                   <div key={d.id} className="p-4 text-xs space-y-1">
-                    <div className="font-semibold text-slate-900">
+                    <div className="font-semibold text-slate-900 dark:text-slate-100">
                       {d.assetCode} · {d.toolName}
                     </div>
-                    <div className="text-slate-600">
+                    <div className="text-slate-600 dark:text-slate-300">
                       {d.method} · {d.reason} · Salvage: <span className="font-mono">{formatPHP(d.salvageValue)}</span>
                     </div>
-                    <div className="text-slate-400 font-mono">
+                    <div className="text-slate-400 dark:text-slate-500 font-mono">
                       {d.disposalDate} · Approved by {d.approvedBy}
                     </div>
                   </div>
@@ -654,9 +656,9 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
 
       {/* Audit Trail */}
       {tab === 'audit' && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
           <table className="w-full text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+            <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
               <tr>
                 <th className="px-4 py-3 text-left">Timestamp</th>
                 <th className="px-4 py-3 text-left">Asset ID</th>
@@ -666,15 +668,15 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                 <th className="px-4 py-3 text-left">Remarks</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {state.toolAuditLogs.map((log) => (
-                <tr key={log.id}>
-                  <td className="px-4 py-2.5 font-mono text-slate-500 whitespace-nowrap">{log.timestamp}</td>
-                  <td className="px-4 py-2.5 font-mono font-semibold text-[#123E82]">{log.assetCode}</td>
-                  <td className="px-4 py-2.5 font-medium text-slate-900">{log.toolName}</td>
-                  <td className="px-4 py-2.5 font-semibold text-slate-800">{log.action}</td>
-                  <td className="px-4 py-2.5 text-slate-700">{log.actor}</td>
-                  <td className="px-4 py-2.5 text-slate-600">{log.remarks}</td>
+                <tr key={log.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                  <td className="px-4 py-2.5 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">{log.timestamp}</td>
+                  <td className="px-4 py-2.5 font-mono font-semibold text-[#123E82] dark:text-blue-300">{log.assetCode}</td>
+                  <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-slate-100">{log.toolName}</td>
+                  <td className="px-4 py-2.5 font-semibold text-slate-800 dark:text-slate-200">{log.action}</td>
+                  <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">{log.actor}</td>
+                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">{log.remarks}</td>
                 </tr>
               ))}
             </tbody>
@@ -684,67 +686,67 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
 
       {/* Register Tool Modal */}
       {showAddTool && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
-          <form onSubmit={handleRegisterTool} className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 flex items-center justify-center p-4">
+          <form onSubmit={handleRegisterTool} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-display text-base font-bold text-slate-900">Register New Tool / Equipment</h3>
-              <button type="button" onClick={() => setShowAddTool(false)} className="p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer">
+              <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Register New Tool / Equipment</h3>
+              <button type="button" onClick={() => setShowAddTool(false)} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Tool / Equipment Name</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Tool / Equipment Name</label>
               <input
                 type="text"
                 value={toolForm.name}
                 onChange={(e) => setToolForm({ ...toolForm, name: e.target.value })}
                 placeholder="e.g. Makita Demolition Hammer"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 required
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Category</label>
                 <input
                   type="text"
                   value={toolForm.category}
                   onChange={(e) => setToolForm({ ...toolForm, category: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                  className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Brand / Model</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Brand / Model</label>
                 <input
                   type="text"
                   value={toolForm.brandModel}
                   onChange={(e) => setToolForm({ ...toolForm, brandModel: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                  className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg"
                 />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Serial No.</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Serial No.</label>
                 <input
                   type="text"
                   value={toolForm.serialNo}
                   onChange={(e) => setToolForm({ ...toolForm, serialNo: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-mono"
+                  className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg font-mono"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Cost (₱)</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Cost (₱)</label>
                 <input
                   type="number"
                   value={toolForm.purchaseCost}
                   onChange={(e) => setToolForm({ ...toolForm, purchaseCost: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-mono"
+                  className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg font-mono"
                 />
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setShowAddTool(false)} className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer">
+              <button type="button" onClick={() => setShowAddTool(false)} className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer">
                 Cancel
               </button>
               <button type="submit" className="px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer">
@@ -757,20 +759,20 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
 
       {/* Borrow Request Modal */}
       {showBorrowModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
-          <form onSubmit={handleCreateBorrow} className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 flex items-center justify-center p-4">
+          <form onSubmit={handleCreateBorrow} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-display text-base font-bold text-slate-900">Request Tool Borrow</h3>
-              <button type="button" onClick={() => setShowBorrowModal(false)} className="p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer">
+              <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Request Tool Borrow</h3>
+              <button type="button" onClick={() => setShowBorrowModal(false)} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Available Tool</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Available Tool</label>
               <select
                 value={borrowForm.toolId}
                 onChange={(e) => setBorrowForm({ ...borrowForm, toolId: e.target.value })}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
               >
                 {availableTools.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -781,11 +783,11 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Deployment Site</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Deployment Site</label>
                 <select
                   value={borrowForm.projectId}
                   onChange={(e) => setBorrowForm({ ...borrowForm, projectId: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 >
                   {state.projects.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -795,29 +797,29 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Expected Return</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Expected Return</label>
                 <input
                   type="date"
                   value={borrowForm.expectedReturnDate}
                   onChange={(e) => setBorrowForm({ ...borrowForm, expectedReturnDate: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-mono"
+                  className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg font-mono"
                   required
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Purpose</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Purpose</label>
               <input
                 type="text"
                 value={borrowForm.purpose}
                 onChange={(e) => setBorrowForm({ ...borrowForm, purpose: e.target.value })}
                 placeholder="Task / activity at project site"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 required
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setShowBorrowModal(false)} className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer">
+              <button type="button" onClick={() => setShowBorrowModal(false)} className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer">
                 Cancel
               </button>
               <button type="submit" className="px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer">
@@ -830,27 +832,27 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
 
       {/* Return & Damage Inspection Modal */}
       {returnReq && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
-          <form onSubmit={handleSubmitReturn} className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 flex items-center justify-center p-4">
+          <form onSubmit={handleSubmitReturn} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-display text-base font-bold text-slate-900">
+              <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
                 Process Tool Return · {returnReq.trNo}
               </h3>
-              <button type="button" onClick={() => setReturnReq(null)} className="p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer">
+              <button type="button" onClick={() => setReturnReq(null)} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="text-xs text-slate-600">
+            <div className="text-xs text-slate-600 dark:text-slate-300">
               {returnReq.toolAssetCode} · {returnReq.toolName} (Borrowed by {returnReq.borrowerName})
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Condition on Return</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Condition on Return</label>
               <select
                 value={returnCond}
                 onChange={(e) =>
                   setReturnCond(e.target.value as 'Good' | 'Minor Damage' | 'Major Damage' | 'Missing Parts')
                 }
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
               >
                 <option value="Good">Good (Return to Available Pool)</option>
                 <option value="Minor Damage">Minor Damage (Send to Repair)</option>
@@ -859,21 +861,21 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Inspection Remarks</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Inspection Remarks</label>
               <textarea
                 value={returnRemarks}
                 onChange={(e) => setReturnRemarks(e.target.value)}
                 rows={2}
                 placeholder="Describe tool condition or damage details"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Optional Damage / Condition Photo</label>
-              <input type="file" accept="image/*" onChange={handlePhotoUpload} className="text-xs text-slate-600" />
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Optional Damage / Condition Photo</label>
+              <input type="file" accept="image/*" onChange={handlePhotoUpload} className="text-xs text-slate-600 dark:text-slate-300" />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setReturnReq(null)} className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer">
+              <button type="button" onClick={() => setReturnReq(null)} className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer">
                 Cancel
               </button>
               <button type="submit" className="px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer">
@@ -886,18 +888,18 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
 
       {/* Disposal Modal */}
       {disposeTool && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
-          <form onSubmit={handleConfirmDispose} className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4">
-            <h3 className="font-display text-base font-bold text-slate-900">Dispose Asset · {disposeTool.assetCode}</h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 flex items-center justify-center p-4">
+          <form onSubmit={handleConfirmDispose} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-6 space-y-4">
+            <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Dispose Asset · {disposeTool.assetCode}</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Method</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Method</label>
                 <select
                   value={disposeMethod}
                   onChange={(e) =>
                     setDisposeMethod(e.target.value as 'Scrap' | 'Auction' | 'Write-Off' | 'Donation')
                   }
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 >
                   <option value="Scrap">Scrap</option>
                   <option value="Auction">Auction</option>
@@ -906,27 +908,27 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Salvage Value (₱)</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Salvage Value (₱)</label>
                 <input
                   type="number"
                   value={salvageValue}
                   onChange={(e) => setSalvageValue(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-mono"
+                  className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg font-mono"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Disposal Reason</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Disposal Reason</label>
               <input
                 type="text"
                 value={disposeReason}
                 onChange={(e) => setDisposeReason(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg"
                 required
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setDisposeTool(null)} className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer">
+              <button type="button" onClick={() => setDisposeTool(null)} className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer">
                 Cancel
               </button>
               <button type="submit" className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg cursor-pointer">

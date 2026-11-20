@@ -80,7 +80,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({ doc, state
                   RFB CONSTRUCTION CORPORATION
                 </h1>
                 <p className="text-xs text-slate-600">
-                  General Engineering, Roads, Bridges &amp; Vertical Structures · Malaybalay City, Bukidnon
+                  General Engineering, Roads, Bridges &amp; Vertical Structures · P-1 A Brgy. Doongan, Butuan City, Agusan Del Norte
                 </p>
                 <p className="text-[11px] text-slate-500">
                   TIN: 009-482-119-000 · procurement@rfbconstruction.ph
@@ -211,7 +211,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({ doc, state
                 TOOLS &amp; EQUIPMENT BORROWER SLIP
               </h1>
               <p className="text-xs text-slate-600">
-                RFB Construction Corporation · Malaybalay City, Bukidnon
+                RFB Construction Corporation · P-1 A Brgy. Doongan, Butuan City, Agusan Del Norte
               </p>
               <p className="text-xs font-mono font-semibold text-slate-800 mt-1">
                 Slip No: {br.trNo} · Status: {br.status}
@@ -364,7 +364,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({ doc, state
                 <h1 className="font-display text-lg font-extrabold text-[#123E82]">
                   RFB CONSTRUCTION SYSTEM — TRACKING SLIP
                 </h1>
-                <p className="text-xs text-slate-500">Malaybalay City, Bukidnon · Electronic Logbook Replacement</p>
+                <p className="text-xs text-slate-500">P-1 A Brgy. Doongan, Butuan City, Agusan Del Norte · Electronic Logbook Replacement</p>
               </div>
             </div>
             <div className="text-right">
@@ -461,7 +461,7 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({ doc, state
               </div>
               <h1 className="font-display text-xl font-extrabold text-[#123E82]">{doc.title}</h1>
               <p className="text-xs text-slate-500">
-                RFB Construction Corporation · Bukidnon · Period: {doc.periodLabel}
+                RFB Construction Corporation · P-1 A Brgy. Doongan, Butuan City, Agusan Del Norte · Period: {doc.periodLabel}
               </p>
             </div>
           </div>
@@ -522,9 +522,9 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({ doc, state
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-xs flex items-center justify-center p-4 print-only-container overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col print-sheet">
-        <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-200 no-print">
-          <div className="text-sm font-semibold text-slate-900">Print &amp; Export Preview</div>
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-4xl max-h-[92vh] flex flex-col print-sheet">
+        <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-t-2xl no-print">
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Print &amp; Export Preview</div>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -537,14 +537,14 @@ export const PrintPreviewModal: React.FC<PrintPreviewModalProps> = ({ doc, state
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               aria-label="Close Print Preview"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
-        <div className="p-6 sm:p-8 overflow-y-auto flex-1">{renderContent()}</div>
+        <div className="p-6 sm:p-8 overflow-y-auto flex-1 bg-white rounded-b-2xl">{renderContent()}</div>
       </div>
     </div>
   );

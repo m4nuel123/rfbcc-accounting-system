@@ -200,8 +200,8 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">Material &amp; Supply Requisitions</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">Material &amp; Supply Requisitions</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Construction materials, ICT equipment, and general supplies with automatic duplicate detection.
           </p>
         </div>
@@ -217,7 +217,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
       </div>
 
       {/* Category Filter Tabs */}
-      <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 rounded-xl w-fit">
+      <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl w-fit">
         {(['All', ...ITEM_GROUPS] as const).map((cat) => (
           <button
             key={cat}
@@ -225,8 +225,8 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
             onClick={() => setFilterCat(cat)}
             className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
               filterCat === cat
-                ? 'bg-white text-[#123E82] shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-[#123E82] dark:text-blue-300 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             {cat}
@@ -235,9 +235,9 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
       </div>
 
       {/* Requisitions Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto shadow-xs">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-xs">
         <table className="w-full text-xs min-w-[780px]">
-          <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+          <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
             <tr>
               <th className="px-4 py-3 text-left font-semibold">Req No.</th>
               <th className="px-4 py-3 text-left font-semibold">Category</th>
@@ -249,28 +249,28 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
               <th className="px-4 py-3 text-right font-semibold">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {filteredReqs.map((req) => {
               const proj = state.projects.find((p) => p.id === req.projectId);
               const totalEst = req.items.reduce((s, it) => s + it.qty * it.estUnitPrice, 0);
               const hasCanvass = state.canvasses.some((c) => c.reqId === req.id);
               return (
-                <tr key={req.id} className="hover:bg-slate-50/70">
-                  <td className="px-4 py-3 font-mono font-semibold text-[#123E82] whitespace-nowrap">
+                <tr key={req.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                  <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300 whitespace-nowrap">
                     {req.reqNo}
                   </td>
-                  <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{req.category}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300 whitespace-nowrap">{req.category}</td>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-slate-900">{proj?.name || req.projectId}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">{req.dateRequested}</div>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{proj?.name || req.projectId}</div>
+                    <div className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">{req.dateRequested}</div>
                   </td>
-                  <td className="px-4 py-3 text-slate-600 max-w-xs">
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400 max-w-xs">
                     {req.items.map((it) => `${it.qty} ${it.unit} ${it.materialName}`).join(', ')}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums whitespace-nowrap">
+                  <td className="px-4 py-3 text-right font-mono font-semibold text-slate-900 dark:text-slate-100 tabular-nums whitespace-nowrap">
                     {formatPHP(totalEst)}
                   </td>
-                  <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{req.requestedBy}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300 whitespace-nowrap">{req.requestedBy}</td>
                   <td className="px-4 py-3">
                     <StatusText status={req.status} />
                   </td>
@@ -280,7 +280,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                       onClick={() =>
                         onOpenPrint({ kind: 'doc-slip', docType: 'Requisition', refId: req.id })
                       }
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg cursor-pointer"
                     >
                       <Printer className="w-3.5 h-3.5" />
                       Slip
@@ -289,7 +289,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                       <button
                         type="button"
                         onClick={() => handleOpenCanvass(req)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#123E82] bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#123E82] dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg cursor-pointer"
                       >
                         <Send className="w-3.5 h-3.5" />
                         Open Canvass
@@ -305,19 +305,19 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
 
       {/* New Requisition Modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-3xl overflow-hidden my-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <div className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-3xl overflow-hidden my-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <h3 className="font-display text-base font-bold text-slate-900">Create New Requisition</h3>
-                <p className="text-xs text-slate-500">
+                <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Create New Requisition</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Requested by {currentEmployee.name} ({currentEmployee.department})
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowCreate(false)}
-                className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer"
+                className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -326,11 +326,11 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Project / Office</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Project / Office</label>
                   <select
                     value={projectId}
                     onChange={(e) => setProjectId(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   >
                     {state.projects.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -340,11 +340,11 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Category</label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as ItemGroup)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   >
                     {ITEM_GROUPS.map((g) => (
                       <option key={g} value={g}>
@@ -354,32 +354,32 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Date Needed</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Date Needed</label>
                   <input
                     type="date"
                     value={dateNeeded}
                     onChange={(e) => setDateNeeded(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-mono"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg font-mono bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Purpose / Justification</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Purpose / Justification</label>
                 <input
                   type="text"
                   value={purpose}
                   onChange={(e) => setPurpose(e.target.value)}
                   placeholder="Describe project phase or office requirement"
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   required
                 />
               </div>
 
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-700">Requested Items</span>
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Requested Items</span>
                   <button
                     type="button"
                     onClick={() =>
@@ -394,19 +394,19 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                         },
                       ])
                     }
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-[#2C6FE0] hover:underline cursor-pointer"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-[#2C6FE0] dark:text-blue-400 hover:underline cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" /> Add Line
                   </button>
                 </div>
 
                 {lineItems.map((it, idx) => (
-                  <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                  <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
                     <div className="col-span-6">
                       <select
                         value={it.materialId}
                         onChange={(e) => handleSelectMaterial(idx, e.target.value)}
-                        className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                        className="w-full px-2.5 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                       >
                         {ITEM_GROUPS.map((grp) => (
                           <optgroup key={grp} label={grp}>
@@ -419,7 +419,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                               ))}
                           </optgroup>
                         ))}
-                        <option value="__ADD_NEW__" className="font-bold text-[#123E82]">
+                        <option value="__ADD_NEW__" className="font-bold text-[#123E82] dark:text-blue-300">
                           + Add New Item…
                         </option>
                       </select>
@@ -436,10 +436,10 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                             )
                           )
                         }
-                        className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg font-mono text-right bg-white"
+                        className="w-full px-2.5 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg font-mono text-right bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                       />
                     </div>
-                    <div className="col-span-3 text-right font-mono text-xs text-slate-700 tabular-nums">
+                    <div className="col-span-3 text-right font-mono text-xs text-slate-700 dark:text-slate-300 tabular-nums">
                       {formatPHP(it.qty * it.estUnitPrice)}
                     </div>
                     <div className="col-span-1 text-right">
@@ -447,7 +447,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                         <button
                           type="button"
                           onClick={() => setLineItems((prev) => prev.filter((_, i) => i !== idx))}
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg cursor-pointer"
+                          className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -457,11 +457,11 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                 ))}
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowCreate(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                  className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -480,36 +480,36 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
       {/* Modal-on-top-of-modal: + Add New Item */}
       {addItemForRow !== null && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
-              <h4 className="font-display text-sm font-bold text-[#123E82]">+ Add New Item to Catalog</h4>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+              <h4 className="font-display text-sm font-bold text-[#123E82] dark:text-blue-300">+ Add New Item to Catalog</h4>
               <button
                 type="button"
                 onClick={() => setAddItemForRow(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <form onSubmit={handleSaveNewItem} className="p-5 space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Material / Item Name</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Material / Item Name</label>
                 <input
                   type="text"
                   value={newItemForm.name}
                   onChange={(e) => setNewItemForm({ ...newItemForm, name: e.target.value })}
                   placeholder="e.g. Galvanized Tie Wire #16"
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   required
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Group</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Group</label>
                   <select
                     value={newItemForm.group}
                     onChange={(e) => setNewItemForm({ ...newItemForm, group: e.target.value as ItemGroup })}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   >
                     {ITEM_GROUPS.map((g) => (
                       <option key={g} value={g}>
@@ -519,31 +519,31 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Unit of Measure</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Unit of Measure</label>
                   <input
                     type="text"
                     value={newItemForm.unit}
                     onChange={(e) => setNewItemForm({ ...newItemForm, unit: e.target.value })}
                     placeholder="Roll, Bag, Unit"
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     required
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Estimated Unit Cost (₱)</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Estimated Unit Cost (₱)</label>
                 <input
                   type="number"
                   value={newItemForm.standardCost}
                   onChange={(e) => setNewItemForm({ ...newItemForm, standardCost: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-mono"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg font-mono bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setAddItemForRow(null)}
-                  className="px-3.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                  className="px-3.5 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -562,12 +562,12 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
       {/* Duplicate Detection Warning Modal */}
       {duplicateMatches && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-amber-300 shadow-2xl w-full max-w-lg overflow-hidden">
-            <div className="px-6 py-4 bg-amber-50 border-b border-amber-200 flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-amber-300 dark:border-amber-700 shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="px-6 py-4 bg-amber-50 dark:bg-amber-950/60 border-b border-amber-200 dark:border-amber-800 flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
               <div>
-                <h4 className="font-display text-sm font-bold text-amber-950">Possible Duplicate Requisition Detected</h4>
-                <p className="text-xs text-amber-800">
+                <h4 className="font-display text-sm font-bold text-amber-950 dark:text-amber-200">Possible Duplicate Requisition Detected</h4>
+                <p className="text-xs text-amber-800 dark:text-amber-300">
                   Existing open request(s) on the same project already include one or more of these items.
                 </p>
               </div>
@@ -575,12 +575,12 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
             <div className="p-6 space-y-3">
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {duplicateMatches.map((d) => (
-                  <div key={d.id} className="border border-slate-200 rounded-xl p-3 text-xs bg-slate-50">
-                    <div className="flex items-center justify-between font-semibold text-slate-900">
-                      <span className="font-mono text-[#123E82]">{d.reqNo}</span>
+                  <div key={d.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs bg-slate-50 dark:bg-slate-800/70">
+                    <div className="flex items-center justify-between font-semibold text-slate-900 dark:text-slate-100">
+                      <span className="font-mono text-[#123E82] dark:text-blue-300">{d.reqNo}</span>
                       <span>{d.dateRequested} · {d.status}</span>
                     </div>
-                    <div className="text-slate-600 mt-1">
+                    <div className="text-slate-600 dark:text-slate-400 mt-1">
                       Items: {d.items.map((it) => `${it.qty} ${it.unit} ${it.materialName}`).join(', ')}
                     </div>
                   </div>
@@ -590,7 +590,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                 <button
                   type="button"
                   onClick={() => setDuplicateMatches(null)}
-                  className="px-4 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer"
+                  className="px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg cursor-pointer"
                 >
                   Go Back &amp; Review
                 </button>

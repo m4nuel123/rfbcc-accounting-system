@@ -79,62 +79,62 @@ export const DocumentTrackerModule: React.FC<DocumentTrackerModuleProps> = ({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold text-slate-900">Document Tracker (Electronic Logbook)</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
+        <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">Document Tracker (Electronic Logbook)</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
           Unified tracking log of all Requisitions &amp; Canvass transactions across Construction, ICT, and Office Supplies. Print routing slips for physical receiver signature.
         </p>
       </div>
 
       {/* Live Summary Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between shadow-xs">
           <div>
-            <div className="text-xs text-slate-500">Total Logged Transactions</div>
-            <div className="text-xl font-bold font-mono text-slate-900 mt-0.5 tabular-nums">{records.length}</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">Total Logged Transactions</div>
+            <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 tabular-nums">{records.length}</div>
           </div>
-          <div className="w-10 h-10 rounded-full bg-blue-50 text-[#2C6FE0] flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/60 text-[#2C6FE0] dark:text-blue-400 flex items-center justify-center">
             <FileCheck className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between shadow-xs">
           <div>
-            <div className="text-xs text-slate-500">Requisitions / Canvasses</div>
-            <div className="text-xl font-bold font-mono text-slate-900 mt-0.5 tabular-nums">
+            <div className="text-xs text-slate-500 dark:text-slate-400">Requisitions / Canvasses</div>
+            <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 tabular-nums">
               {state.requisitions.length} / {state.canvasses.length}
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between shadow-xs">
           <div>
-            <div className="text-xs text-slate-500">Possible Duplicates Flagged</div>
-            <div className={`text-xl font-bold font-mono mt-0.5 tabular-nums ${duplicateCount > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+            <div className="text-xs text-slate-500 dark:text-slate-400">Possible Duplicates Flagged</div>
+            <div className={`text-xl font-bold font-mono mt-0.5 tabular-nums ${duplicateCount > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
               {duplicateCount}
             </div>
           </div>
-          <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
             <AlertTriangle className="w-5 h-5" />
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 shadow-xs">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 shadow-xs">
         <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search tracking no., item, person..."
-            className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg"
+            className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
         </div>
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as 'All' | 'Requisition' | 'Canvass')}
-          className="px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+          className="px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
         >
           <option value="All">All Document Types</option>
           <option value="Requisition">Requisition Only</option>
@@ -143,7 +143,7 @@ export const DocumentTrackerModule: React.FC<DocumentTrackerModuleProps> = ({
         <select
           value={catFilter}
           onChange={(e) => setCatFilter(e.target.value as 'All' | ItemGroup)}
-          className="px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+          className="px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
         >
           <option value="All">All Categories</option>
           <option value="Construction Materials">Construction Materials</option>
@@ -153,7 +153,7 @@ export const DocumentTrackerModule: React.FC<DocumentTrackerModuleProps> = ({
         <select
           value={projFilter}
           onChange={(e) => setProjFilter(e.target.value)}
-          className="px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+          className="px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
         >
           <option value="All">All Projects / Offices</option>
           {state.projects.map((p) => (
@@ -165,9 +165,9 @@ export const DocumentTrackerModule: React.FC<DocumentTrackerModuleProps> = ({
       </div>
 
       {/* Log Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto shadow-xs">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-xs">
         <table className="w-full text-xs min-w-[820px]">
-          <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+          <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
             <tr>
               <th className="px-4 py-3 text-left">Tracking No.</th>
               <th className="px-4 py-3 text-left">Type</th>
@@ -179,24 +179,24 @@ export const DocumentTrackerModule: React.FC<DocumentTrackerModuleProps> = ({
               <th className="px-4 py-3 text-right">Print Slip</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {filtered.map((rec) => {
               const proj = state.projects.find((p) => p.id === rec.projectId);
               return (
-                <tr key={`${rec.docType}-${rec.id}`} className="hover:bg-slate-50/70">
-                  <td className="px-4 py-3 font-mono font-semibold text-[#123E82] whitespace-nowrap">
+                <tr key={`${rec.docType}-${rec.id}`} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                  <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300 whitespace-nowrap">
                     {rec.trackingNo}
                     {rec.possibleDuplicate && (
-                      <span className="ml-2 text-[10px] font-sans font-bold text-amber-700">
+                      <span className="ml-2 text-[10px] font-sans font-bold text-amber-700 dark:text-amber-400">
                         (Possible Duplicate)
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-700">{rec.docType}</td>
-                  <td className="px-4 py-3 text-slate-600">{rec.category}</td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{proj?.name || rec.projectId}</td>
-                  <td className="px-4 py-3 text-slate-600 max-w-xs truncate">{rec.summary}</td>
-                  <td className="px-4 py-3 font-mono text-slate-600">{rec.date}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{rec.docType}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{rec.category}</td>
+                  <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{proj?.name || rec.projectId}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400 max-w-xs truncate">{rec.summary}</td>
+                  <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400">{rec.date}</td>
                   <td className="px-4 py-3"><StatusText status={rec.status} /></td>
                   <td className="px-4 py-3 text-right">
                     <button
@@ -204,7 +204,7 @@ export const DocumentTrackerModule: React.FC<DocumentTrackerModuleProps> = ({
                       onClick={() =>
                         onOpenPrint({ kind: 'doc-slip', docType: rec.docType, refId: rec.id })
                       }
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-[#123E82] bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-[#123E82] dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg cursor-pointer"
                     >
                       <Printer className="w-3.5 h-3.5" /> Slip
                     </button>

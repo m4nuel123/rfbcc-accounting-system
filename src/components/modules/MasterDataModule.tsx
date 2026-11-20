@@ -186,14 +186,14 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold text-slate-900">Master Data &amp; Access Control</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Bukidnon project sites, accredited suppliers, items catalog, employee e-signatures, and role-based user accounts.
+        <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">Master Data &amp; Access Control</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          Butuan City &amp; Mindanao project sites, accredited suppliers, items catalog, employee e-signatures, and role-based user accounts.
         </p>
       </div>
 
       {/* Sub-navigation Tabs */}
-      <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 rounded-xl w-fit">
+      <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl w-fit">
         {(
           [
             { id: 'employees', label: 'Employees & E-Signatures' },
@@ -210,8 +210,8 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
             onClick={() => setTab(t.id)}
             className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
               tab === t.id
-                ? 'bg-white text-[#123E82] shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white dark:bg-slate-900 text-[#123E82] dark:text-blue-300 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             {t.label}
@@ -222,45 +222,45 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
       {/* Employees & E-Signatures */}
       {tab === 'employees' && (
         <div className="space-y-5">
-          <form onSubmit={handleAddEmployee} className="bg-white rounded-2xl border border-slate-200 p-5 grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+          <form onSubmit={handleAddEmployee} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
               <input
                 type="text"
                 value={newEmp.name}
                 onChange={(e) => setNewEmp({ ...newEmp, name: e.target.value })}
                 placeholder="e.g. Engr. Marco Dizon"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Position</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Position</label>
               <input
                 type="text"
                 value={newEmp.position}
                 onChange={(e) => setNewEmp({ ...newEmp, position: e.target.value })}
                 placeholder="Site Engineer"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Department</label>
               <input
                 type="text"
                 value={newEmp.department}
                 onChange={(e) => setNewEmp({ ...newEmp, department: e.target.value })}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Email</label>
               <input
                 type="email"
                 value={newEmp.email}
                 onChange={(e) => setNewEmp({ ...newEmp, email: e.target.value })}
                 placeholder="name@rfbconstruction.ph"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
             </div>
             <button
@@ -271,9 +271,9 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
             </button>
           </form>
 
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             <table className="w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">Employee Name</th>
                   <th className="px-4 py-3 text-left font-semibold">Position</th>
@@ -282,31 +282,31 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
                   <th className="px-4 py-3 text-right font-semibold">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {state.employees.map((emp) => (
-                  <tr key={emp.id} className="hover:bg-slate-50/70">
-                    <td className="px-4 py-3 font-semibold text-slate-900">{emp.name}</td>
-                    <td className="px-4 py-3 text-slate-600">{emp.position}</td>
-                    <td className="px-4 py-3 text-slate-600">{emp.department}</td>
+                  <tr key={emp.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                    <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">{emp.name}</td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{emp.position}</td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{emp.department}</td>
                     <td className="px-4 py-3">
                       {emp.signatureDataUrl ? (
                         <div className="flex items-center gap-2">
                           <img
                             src={emp.signatureDataUrl}
                             alt={`${emp.name} signature`}
-                            className="h-8 w-24 object-contain border border-slate-200 rounded bg-white p-0.5"
+                            className="h-8 w-24 object-contain border border-slate-200 dark:border-slate-700 rounded bg-white p-0.5"
                           />
-                          <span className="text-[11px] font-medium text-emerald-700">Captured</span>
+                          <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">Captured</span>
                         </div>
                       ) : (
-                        <span className="text-[11px] text-slate-400">Not captured yet</span>
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500">Not captured yet</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
                         type="button"
                         onClick={() => setSigEmployee(emp)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#123E82] bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#123E82] dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg cursor-pointer"
                       >
                         <PenTool className="w-3.5 h-3.5" />
                         {emp.signatureDataUrl ? 'Edit Signature' : 'Capture Signature'}
@@ -323,24 +323,24 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
       {/* Projects */}
       {tab === 'projects' && (
         <div className="space-y-5">
-          <form onSubmit={handleAddProject} className="bg-white rounded-2xl border border-slate-200 p-5 grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+          <form onSubmit={handleAddProject} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Project Name</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Project Name</label>
               <input
                 type="text"
                 value={newProj.name}
                 onChange={(e) => setNewProj({ ...newProj, name: e.target.value })}
-                placeholder="e.g. Maramag Farm-to-Market Road"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                placeholder="e.g. Butuan Bypass Road Expansion"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Type</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Type</label>
               <select
                 value={newProj.type}
                 onChange={(e) => setNewProj({ ...newProj, type: e.target.value as ProjectType })}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
               >
                 <option value="Road">Road</option>
                 <option value="Bridge">Bridge</option>
@@ -349,12 +349,12 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Approved Budget (₱)</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Approved Budget (₱)</label>
               <input
                 type="number"
                 value={newProj.budget}
                 onChange={(e) => setNewProj({ ...newProj, budget: e.target.value })}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-mono"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg font-mono"
               />
             </div>
             <button
@@ -365,9 +365,9 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
             </button>
           </form>
 
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             <table className="w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">Code</th>
                   <th className="px-4 py-3 text-left font-semibold">Project Name</th>
@@ -377,14 +377,14 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
                   <th className="px-4 py-3 text-left font-semibold">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {state.projects.map((p) => (
-                  <tr key={p.id}>
-                    <td className="px-4 py-3 font-mono font-semibold text-[#123E82]">{p.code}</td>
-                    <td className="px-4 py-3 font-semibold text-slate-900">{p.name}</td>
-                    <td className="px-4 py-3 text-slate-600">{p.type}</td>
-                    <td className="px-4 py-3 text-slate-600">{p.location}</td>
-                    <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums">{formatPHP(p.budget)}</td>
+                  <tr key={p.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                    <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300">{p.code}</td>
+                    <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">{p.name}</td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{p.type}</td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{p.location}</td>
+                    <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-slate-900 dark:text-slate-100">{formatPHP(p.budget)}</td>
                     <td className="px-4 py-3"><StatusText status={p.status} /></td>
                   </tr>
                 ))}
@@ -397,35 +397,35 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
       {/* Suppliers */}
       {tab === 'suppliers' && (
         <div className="space-y-5">
-          <form onSubmit={handleAddSupplier} className="bg-white rounded-2xl border border-slate-200 p-5 grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+          <form onSubmit={handleAddSupplier} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Supplier Name</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Supplier Name</label>
               <input
                 type="text"
                 value={newSup.name}
                 onChange={(e) => setNewSup({ ...newSup, name: e.target.value })}
                 placeholder="Supplier company name"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Contact No.</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact No.</label>
               <input
                 type="text"
                 value={newSup.contact}
                 onChange={(e) => setNewSup({ ...newSup, contact: e.target.value })}
                 placeholder="0917-xxx-xxxx"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Terms</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Terms</label>
               <input
                 type="text"
                 value={newSup.terms}
                 onChange={(e) => setNewSup({ ...newSup, terms: e.target.value })}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg"
               />
             </div>
             <button
@@ -436,9 +436,9 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
             </button>
           </form>
 
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             <table className="w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">Supplier</th>
                   <th className="px-4 py-3 text-left font-semibold">Category</th>
@@ -447,14 +447,14 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
                   <th className="px-4 py-3 text-left font-semibold">Terms</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {state.suppliers.map((s) => (
-                  <tr key={s.id}>
-                    <td className="px-4 py-3 font-semibold text-slate-900">{s.name}</td>
-                    <td className="px-4 py-3 text-slate-600">{s.category}</td>
-                    <td className="px-4 py-3 text-slate-600">{s.address}</td>
-                    <td className="px-4 py-3 font-mono text-slate-600">{s.contact}</td>
-                    <td className="px-4 py-3 text-slate-700">{s.terms}</td>
+                  <tr key={s.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                    <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">{s.name}</td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{s.category}</td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{s.address}</td>
+                    <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400">{s.contact}</td>
+                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{s.terms}</td>
                   </tr>
                 ))}
               </tbody>
@@ -466,24 +466,24 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
       {/* Items Catalog */}
       {tab === 'materials' && (
         <div className="space-y-5">
-          <form onSubmit={handleAddMaterial} className="bg-white rounded-2xl border border-slate-200 p-5 grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+          <form onSubmit={handleAddMaterial} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Item / Material Name</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Item / Material Name</label>
               <input
                 type="text"
                 value={newMat.name}
                 onChange={(e) => setNewMat({ ...newMat, name: e.target.value })}
                 placeholder="Item description"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Group</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Group</label>
               <select
                 value={newMat.group}
                 onChange={(e) => setNewMat({ ...newMat, group: e.target.value as ItemGroup })}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
               >
                 <option value="Construction Materials">Construction Materials</option>
                 <option value="ICT Equipment">ICT Equipment</option>
@@ -491,20 +491,20 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Unit / Std Cost (₱)</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Unit / Std Cost (₱)</label>
               <div className="flex gap-1.5">
                 <input
                   type="text"
                   value={newMat.unit}
                   onChange={(e) => setNewMat({ ...newMat, unit: e.target.value })}
                   placeholder="Unit"
-                  className="w-1/2 px-2.5 py-2 text-xs border border-slate-200 rounded-lg"
+                  className="w-1/2 px-2.5 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
                 <input
                   type="number"
                   value={newMat.standardCost}
                   onChange={(e) => setNewMat({ ...newMat, standardCost: e.target.value })}
-                  className="w-1/2 px-2.5 py-2 text-xs border border-slate-200 rounded-lg font-mono"
+                  className="w-1/2 px-2.5 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg font-mono"
                 />
               </div>
             </div>
@@ -516,9 +516,9 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
             </button>
           </form>
 
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             <table className="w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">Code</th>
                   <th className="px-4 py-3 text-left font-semibold">Item Name</th>
@@ -527,14 +527,14 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
                   <th className="px-4 py-3 text-right font-semibold">Standard Cost</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {state.materials.map((m) => (
-                  <tr key={m.id}>
-                    <td className="px-4 py-3 font-mono font-semibold text-[#123E82]">{m.code}</td>
-                    <td className="px-4 py-3 font-medium text-slate-900">{m.name}</td>
-                    <td className="px-4 py-3 text-slate-600">{m.group}</td>
-                    <td className="px-4 py-3 text-slate-600">{m.unit}</td>
-                    <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums">{formatPHP(m.standardCost)}</td>
+                  <tr key={m.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                    <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300">{m.code}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{m.name}</td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{m.group}</td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{m.unit}</td>
+                    <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-slate-900 dark:text-slate-100">{formatPHP(m.standardCost)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -546,41 +546,41 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
       {/* Admin-only User Accounts */}
       {tab === 'users' && currentUser.isAdmin && (
         <div className="space-y-5">
-          <form onSubmit={handleCreateUser} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
-            <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-              <Users className="w-4 h-4 text-[#2C6FE0]" />
+          <form onSubmit={handleCreateUser} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
+              <Users className="w-4 h-4 text-[#2C6FE0] dark:text-blue-400" />
               Create Role-Based User Account
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Username</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Username</label>
                 <input
                   type="text"
                   value={newUser.username}
                   onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
                   placeholder="e.g. elena"
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                  className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Password</label>
                 <input
                   type="text"
                   value={newUser.password}
                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                   placeholder="Assign password"
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                  className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Linked Employee</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Linked Employee</label>
                 <select
                   value={newUser.employeeId}
                   onChange={(e) => setNewUser({ ...newUser, employeeId: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 >
                   {state.employees.map((emp) => (
                     <option key={emp.id} value={emp.id}>
@@ -590,25 +590,26 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Role Label</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Role Label</label>
                 <input
                   type="text"
                   value={newUser.roleLabel}
                   onChange={(e) => setNewUser({ ...newUser, roleLabel: e.target.value })}
                   placeholder="e.g. Site Checker"
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                  className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-slate-700">Assigned Module Access</span>
-                <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#123E82] cursor-pointer">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Assigned Module Access</span>
+                <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#123E82] dark:text-blue-300 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={newUser.isAdmin}
                     onChange={(e) => setNewUser({ ...newUser, isAdmin: e.target.checked })}
+                    className="accent-[#2C6FE0]"
                   />
                   Grant Full Admin Access
                 </label>
@@ -623,8 +624,8 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
                         key={m.id}
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border cursor-pointer transition-colors ${
                           checked
-                            ? 'bg-blue-50 border-[#2C6FE0] text-[#123E82] font-semibold'
-                            : 'bg-white border-slate-200 text-slate-600'
+                            ? 'bg-blue-50 dark:bg-blue-950/60 border-[#2C6FE0] dark:border-blue-500 text-[#123E82] dark:text-blue-300 font-semibold'
+                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                         }`}
                       >
                         <input
@@ -649,9 +650,9 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
             </button>
           </form>
 
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
             <table className="w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">Username</th>
                   <th className="px-4 py-3 text-left font-semibold">Employee</th>
@@ -660,15 +661,15 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
                   <th className="px-4 py-3 text-right font-semibold">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {state.users.map((u) => {
                   const emp = state.employees.find((e) => e.id === u.employeeId);
                   return (
-                    <tr key={u.id}>
-                      <td className="px-4 py-3 font-mono font-semibold text-[#123E82]">{u.username}</td>
-                      <td className="px-4 py-3 font-medium text-slate-900">{emp?.name || '—'}</td>
-                      <td className="px-4 py-3 text-slate-600">{u.roleLabel}</td>
-                      <td className="px-4 py-3 text-slate-600">
+                    <tr key={u.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                      <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300">{u.username}</td>
+                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{emp?.name || '—'}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{u.roleLabel}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
                         {u.isAdmin ? 'All Modules (Admin)' : u.allowedModules.join(', ')}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -676,12 +677,12 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
                           <button
                             type="button"
                             onClick={() => handleDeleteUser(u.id)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 rounded-lg cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/60 rounded-lg cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" /> Delete
                           </button>
                         ) : (
-                          <span className="text-[11px] text-slate-400">Protected</span>
+                          <span className="text-[11px] text-slate-400 dark:text-slate-500">Protected</span>
                         )}
                       </td>
                     </tr>
@@ -695,12 +696,12 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
 
       {/* SQL Schema Tab */}
       {tab === 'schema' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-3">
-          <div className="flex items-center gap-2 text-sm font-bold text-[#123E82]">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-bold text-[#123E82] dark:text-blue-300">
             <Database className="w-4 h-4" />
             RFB Construction System — SQL OLTP &amp; Data Warehouse DDL
           </div>
-          <pre className="bg-slate-900 text-blue-100 rounded-xl p-5 text-xs font-mono overflow-x-auto leading-relaxed">
+          <pre className="bg-slate-900 dark:bg-slate-950 text-blue-100 border border-slate-800 rounded-xl p-5 text-xs font-mono overflow-x-auto leading-relaxed">
             {SQL_WAREHOUSE_SCHEMA}
           </pre>
         </div>

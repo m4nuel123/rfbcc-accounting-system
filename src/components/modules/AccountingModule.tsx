@@ -108,8 +108,8 @@ export const AccountingModule: React.FC<AccountingModuleProps> = ({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">Accounting &amp; General Ledger</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">Accounting &amp; General Ledger</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Double-entry general ledger auto-posted from receiving &amp; vouchers, live Trial Balance, and AP aging.
           </p>
         </div>
@@ -124,7 +124,7 @@ export const AccountingModule: React.FC<AccountingModuleProps> = ({
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-xl w-fit">
+      <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl w-fit">
         {(
           [
             { id: 'gl', label: 'General Ledger' },
@@ -138,7 +138,9 @@ export const AccountingModule: React.FC<AccountingModuleProps> = ({
             type="button"
             onClick={() => setTab(t.id)}
             className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-              tab === t.id ? 'bg-white text-[#123E82] shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              tab === t.id
+                ? 'bg-white dark:bg-slate-900 text-[#123E82] dark:text-blue-300 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             {t.label}
@@ -150,19 +152,19 @@ export const AccountingModule: React.FC<AccountingModuleProps> = ({
       {tab === 'gl' && (
         <div className="space-y-4">
           {state.journalEntries.map((je) => (
-            <div key={je.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-              <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div key={je.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+              <div className="px-5 py-3 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-3">
-                  <BookOpen className="w-4 h-4 text-[#2C6FE0]" />
-                  <span className="font-mono font-bold text-[#123E82]">{je.jeNo}</span>
-                  <span className="font-medium text-slate-900">{je.description}</span>
+                  <BookOpen className="w-4 h-4 text-[#2C6FE0] dark:text-blue-400" />
+                  <span className="font-mono font-bold text-[#123E82] dark:text-blue-300">{je.jeNo}</span>
+                  <span className="font-medium text-slate-900 dark:text-slate-100">{je.description}</span>
                 </div>
-                <div className="font-mono text-slate-500">
+                <div className="font-mono text-slate-500 dark:text-slate-400">
                   {je.date} · Ref: {je.reference} · Posted by {je.postedBy}
                 </div>
               </div>
               <table className="w-full text-xs">
-                <thead className="text-slate-500 border-b border-slate-100">
+                <thead className="text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
                   <tr>
                     <th className="px-5 py-2 text-left">Account Code</th>
                     <th className="px-5 py-2 text-left">Account Title</th>
@@ -170,17 +172,17 @@ export const AccountingModule: React.FC<AccountingModuleProps> = ({
                     <th className="px-5 py-2 text-right">Credit</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {je.lines.map((l, idx) => (
-                    <tr key={idx}>
-                      <td className="px-5 py-2 font-mono text-[#123E82]">{l.accountCode}</td>
-                      <td className={`px-5 py-2 ${l.credit > 0 ? 'pl-10 text-slate-600' : 'font-medium text-slate-900'}`}>
+                    <tr key={idx} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                      <td className="px-5 py-2 font-mono text-[#123E82] dark:text-blue-300">{l.accountCode}</td>
+                      <td className={`px-5 py-2 ${l.credit > 0 ? 'pl-10 text-slate-600 dark:text-slate-400' : 'font-medium text-slate-900 dark:text-slate-100'}`}>
                         {l.accountName}
                       </td>
-                      <td className="px-5 py-2 text-right font-mono tabular-nums">
+                      <td className="px-5 py-2 text-right font-mono tabular-nums text-slate-900 dark:text-slate-100">
                         {l.debit > 0 ? formatPHP(l.debit) : '—'}
                       </td>
-                      <td className="px-5 py-2 text-right font-mono tabular-nums">
+                      <td className="px-5 py-2 text-right font-mono tabular-nums text-slate-900 dark:text-slate-100">
                         {l.credit > 0 ? formatPHP(l.credit) : '—'}
                       </td>
                     </tr>
@@ -194,19 +196,19 @@ export const AccountingModule: React.FC<AccountingModuleProps> = ({
 
       {/* Trial Balance */}
       {tab === 'trial' && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-          <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-              <Scale className="w-4 h-4 text-[#2C6FE0]" /> Trial Balance
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
+          <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
+              <Scale className="w-4 h-4 text-[#2C6FE0] dark:text-blue-400" /> Trial Balance
             </div>
-            <span className="text-xs font-semibold text-emerald-700">
+            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
               {Math.abs(trialBalance.totalDebit - trialBalance.totalCredit) < 0.01
                 ? 'Balanced (DR = CR)'
                 : 'Out of Balance'}
             </span>
           </div>
           <table className="w-full text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+            <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
               <tr>
                 <th className="px-4 py-3 text-left">Code</th>
                 <th className="px-4 py-3 text-left">Account Name</th>
@@ -215,30 +217,30 @@ export const AccountingModule: React.FC<AccountingModuleProps> = ({
                 <th className="px-4 py-3 text-right">Credit Balance</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {trialBalance.rows.map((r) => (
-                <tr key={r.code}>
-                  <td className="px-4 py-2.5 font-mono text-[#123E82]">{r.code}</td>
-                  <td className="px-4 py-2.5 font-medium text-slate-900">{r.name}</td>
-                  <td className="px-4 py-2.5 text-slate-600">{r.type}</td>
-                  <td className="px-4 py-2.5 text-right font-mono tabular-nums">
+                <tr key={r.code} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                  <td className="px-4 py-2.5 font-mono text-[#123E82] dark:text-blue-300">{r.code}</td>
+                  <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-slate-100">{r.name}</td>
+                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400">{r.type}</td>
+                  <td className="px-4 py-2.5 text-right font-mono tabular-nums text-slate-900 dark:text-slate-100">
                     {r.debitBal > 0 ? formatPHP(r.debitBal) : '—'}
                   </td>
-                  <td className="px-4 py-2.5 text-right font-mono tabular-nums">
+                  <td className="px-4 py-2.5 text-right font-mono tabular-nums text-slate-900 dark:text-slate-100">
                     {r.creditBal > 0 ? formatPHP(r.creditBal) : '—'}
                   </td>
                 </tr>
               ))}
             </tbody>
-            <tfoot className="bg-blue-50/70 font-bold border-t border-slate-200">
+            <tfoot className="bg-blue-50/70 dark:bg-blue-950/50 font-bold border-t border-slate-200 dark:border-slate-800">
               <tr>
-                <td colSpan={3} className="px-4 py-3 text-right uppercase text-[11px]">
+                <td colSpan={3} className="px-4 py-3 text-right uppercase text-[11px] text-slate-700 dark:text-slate-200">
                   Total
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-[#123E82] tabular-nums">
+                <td className="px-4 py-3 text-right font-mono text-[#123E82] dark:text-blue-300 tabular-nums">
                   {formatPHP(trialBalance.totalDebit)}
                 </td>
-                <td className="px-4 py-3 text-right font-mono text-[#123E82] tabular-nums">
+                <td className="px-4 py-3 text-right font-mono text-[#123E82] dark:text-blue-300 tabular-nums">
                   {formatPHP(trialBalance.totalCredit)}
                 </td>
               </tr>
@@ -249,9 +251,9 @@ export const AccountingModule: React.FC<AccountingModuleProps> = ({
 
       {/* AP Aging */}
       {tab === 'apAging' && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
           <table className="w-full text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+            <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
               <tr>
                 <th className="px-4 py-3 text-left">DV No.</th>
                 <th className="px-4 py-3 text-left">Supplier</th>
@@ -260,21 +262,21 @@ export const AccountingModule: React.FC<AccountingModuleProps> = ({
                 <th className="px-4 py-3 text-right">Unpaid Amount</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {apAging.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-slate-500">
+                  <td colSpan={5} className="p-6 text-center text-slate-500 dark:text-slate-400">
                     All approved vouchers are currently settled.
                   </td>
                 </tr>
               ) : (
                 apAging.map((v) => (
-                  <tr key={v.id}>
-                    <td className="px-4 py-3 font-mono font-semibold text-[#123E82]">{v.dvNo}</td>
-                    <td className="px-4 py-3 font-medium text-slate-900">{v.supplierName}</td>
-                    <td className="px-4 py-3 font-mono text-slate-600">{v.dueDate}</td>
-                    <td className="px-4 py-3 font-medium text-slate-700">{v.bucket}</td>
-                    <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums">
+                  <tr key={v.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                    <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300">{v.dvNo}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{v.supplierName}</td>
+                    <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400">{v.dueDate}</td>
+                    <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-300">{v.bucket}</td>
+                    <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-slate-900 dark:text-slate-100">
                       {formatPHP(v.invoiceAmount)}
                     </td>
                   </tr>
@@ -287,9 +289,9 @@ export const AccountingModule: React.FC<AccountingModuleProps> = ({
 
       {/* Chart of Accounts */}
       {tab === 'coa' && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
           <table className="w-full text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+            <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
               <tr>
                 <th className="px-4 py-3 text-left">Account Code</th>
                 <th className="px-4 py-3 text-left">Account Name</th>
@@ -297,13 +299,13 @@ export const AccountingModule: React.FC<AccountingModuleProps> = ({
                 <th className="px-4 py-3 text-left">Normal Balance</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {state.accounts.map((a) => (
-                <tr key={a.code}>
-                  <td className="px-4 py-3 font-mono font-semibold text-[#123E82]">{a.code}</td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{a.name}</td>
-                  <td className="px-4 py-3 text-slate-600">{a.type}</td>
-                  <td className="px-4 py-3 text-slate-600">{a.normalBalance}</td>
+                <tr key={a.code} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                  <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300">{a.code}</td>
+                  <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{a.name}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{a.type}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{a.normalBalance}</td>
                 </tr>
               ))}
             </tbody>
@@ -313,55 +315,55 @@ export const AccountingModule: React.FC<AccountingModuleProps> = ({
 
       {/* Manual Journal Entry Modal */}
       {showNewJe && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
-          <form onSubmit={handlePostJE} className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 flex items-center justify-center p-4">
+          <form onSubmit={handlePostJE} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-display text-base font-bold text-slate-900">Post Manual Journal Entry</h3>
-              <button type="button" onClick={() => setShowNewJe(false)} className="p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer">
+              <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Post Manual Journal Entry</h3>
+              <button type="button" onClick={() => setShowNewJe(false)} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Reference</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Reference</label>
                 <input
                   type="text"
                   value={jeRef}
                   onChange={(e) => setJeRef(e.target.value)}
                   placeholder="PB-2026-002"
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-mono"
+                  className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg font-mono placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Amount (₱)</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Amount (₱)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-mono"
+                  className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg font-mono"
                   required
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Description</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Description</label>
               <input
                 type="text"
                 value={jeDesc}
                 onChange={(e) => setJeDesc(e.target.value)}
                 placeholder="e.g. Progress Billing Collection"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 required
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Debit Account</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Debit Account</label>
                 <select
                   value={debitCode}
                   onChange={(e) => setDebitCode(e.target.value)}
-                  className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                  className="w-full px-2.5 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 >
                   {state.accounts.map((a) => (
                     <option key={a.code} value={a.code}>
@@ -371,11 +373,11 @@ export const AccountingModule: React.FC<AccountingModuleProps> = ({
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Credit Account</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Credit Account</label>
                 <select
                   value={creditCode}
                   onChange={(e) => setCreditCode(e.target.value)}
-                  className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                  className="w-full px-2.5 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 >
                   {state.accounts.map((a) => (
                     <option key={a.code} value={a.code}>
@@ -386,7 +388,7 @@ export const AccountingModule: React.FC<AccountingModuleProps> = ({
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setShowNewJe(false)} className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer">
+              <button type="button" onClick={() => setShowNewJe(false)} className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer">
                 Cancel
               </button>
               <button type="submit" className="px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer">

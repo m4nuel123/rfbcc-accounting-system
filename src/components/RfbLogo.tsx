@@ -35,11 +35,11 @@ export const RfbLogo: React.FC<RfbLogoProps> = ({
     >
       {mark}
       <div className="leading-tight">
-        <div className="font-display font-bold text-[#123E82] tracking-tight text-base whitespace-nowrap">
+        <div className="font-display font-bold text-[#123E82] dark:text-blue-300 tracking-tight text-base whitespace-nowrap">
           RFB Construction
         </div>
-        <div className="text-[11px] font-medium text-slate-500 whitespace-nowrap">
-          Bukidnon · ERP &amp; BI
+        <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
+          Butuan City · ERP &amp; BI
         </div>
       </div>
     </div>

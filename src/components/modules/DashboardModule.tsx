@@ -121,11 +121,11 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
       {/* Greeting Header + Quick Actions */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
             {getGreeting()}, {userName}
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            RFB Construction Executive Business Intelligence · Bukidnon Operations
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            RFB Construction Executive Business Intelligence · Butuan City HQ &amp; Operations
           </p>
         </div>
 
@@ -133,7 +133,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
           <button
             type="button"
             onClick={() => setShowSqlWarehouse((v) => !v)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#123E82] bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#123E82] dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             <Database className="w-3.5 h-3.5" />
             {showSqlWarehouse ? 'Hide DW Star Schema' : 'SQL Data Warehouse'}
@@ -153,9 +153,9 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
             <button
               type="button"
               onClick={() => onNavigate('vouchers')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <DollarSign className="w-3.5 h-3.5 text-[#2C6FE0]" />
+              <DollarSign className="w-3.5 h-3.5 text-[#2C6FE0] dark:text-blue-400" />
               Record Payment
             </button>
           )}
@@ -163,9 +163,9 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
             <button
               type="button"
               onClick={() => onNavigate('reports')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-[#2C6FE0]" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-[#2C6FE0] dark:text-blue-400" />
               Generate Report
             </button>
           )}
@@ -174,69 +174,69 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
 
       {/* KPI Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs">
           <div className="flex items-start justify-between">
             <div>
-              <div className="text-xs font-medium text-slate-500">Total Procurement Spend</div>
-              <div className="text-xl font-bold font-mono text-slate-900 mt-1 tabular-nums">
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Procurement Spend</div>
+              <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1 tabular-nums">
                 {formatCompactPHP(metrics.totalPOSpend)}
               </div>
-              <div className="text-xs text-slate-500 mt-1.5 font-mono tabular-nums">
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 font-mono tabular-nums">
                 {metrics.utilizationPct}% of {formatCompactPHP(metrics.totalBudget)} budget
               </div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-blue-50 text-[#2C6FE0] flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/70 text-[#2C6FE0] dark:text-blue-400 flex items-center justify-center shrink-0">
               <Building2 className="w-5 h-5" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs">
           <div className="flex items-start justify-between">
             <div>
-              <div className="text-xs font-medium text-slate-500">Canvass Savings YTD</div>
-              <div className="text-xl font-bold font-mono text-emerald-700 mt-1 tabular-nums">
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Canvass Savings YTD</div>
+              <div className="text-xl font-bold font-mono text-emerald-700 dark:text-emerald-400 mt-1 tabular-nums">
                 {formatPHP(metrics.totalSavings)}
               </div>
-              <div className="text-xs text-slate-500 mt-1.5">
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
                 Across {state.purchaseRequests.length} Purchase Requests
               </div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
               <TrendingDown className="w-5 h-5" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs">
           <div className="flex items-start justify-between">
             <div>
-              <div className="text-xs font-medium text-slate-500">Accounts Payable Unpaid</div>
-              <div className="text-xl font-bold font-mono text-slate-900 mt-1 tabular-nums">
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Accounts Payable Unpaid</div>
+              <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1 tabular-nums">
                 {formatPHP(metrics.unpaidTotal)}
               </div>
-              <div className="text-xs text-slate-500 mt-1.5">
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
                 {metrics.unpaidCount} pending disbursement · {metrics.pendingPRs} PRs awaiting sign-off
               </div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
               <ClipboardCheck className="w-5 h-5" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs">
           <div className="flex items-start justify-between">
             <div>
-              <div className="text-xs font-medium text-slate-500">Tools &amp; Fleet Status</div>
-              <div className="text-xl font-bold font-mono text-slate-900 mt-1 tabular-nums">
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Tools &amp; Fleet Status</div>
+              <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1 tabular-nums">
                 {state.tools.length} Assets
               </div>
-              <div className="text-xs text-slate-500 mt-1.5">
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
                 {metrics.toolsBorrowed} borrowed · {metrics.toolsRepairOrLost} repair/lost alerts
               </div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
               <Wrench className="w-5 h-5" />
             </div>
           </div>
@@ -245,45 +245,45 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
 
       {/* Optional SQL Data Warehouse Star Schema Explorer */}
       {showSqlWarehouse && (
-        <div className="bg-white rounded-2xl border border-blue-200 p-6 shadow-xs space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-blue-200 dark:border-blue-900/70 p-6 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h2 className="font-display text-base font-bold text-[#123E82]">
+              <h2 className="font-display text-base font-bold text-[#123E82] dark:text-blue-300">
                 SQL Data Warehouse — Star Schema &amp; Live Fact Aggregates
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 OLTP transactions automatically roll up into dimensional fact metrics for project cost &amp; supplier BI.
               </p>
             </div>
-            <span className="text-xs font-mono text-slate-500">
+            <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
               Facts: {state.purchaseOrders.length} POs · {state.vouchers.length} DVs · {state.journalEntries.length} JEs
             </span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70">
-              <div className="text-xs font-bold text-slate-800 mb-2">Star Schema Dimensional Model</div>
+            <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/70 dark:bg-slate-950/60">
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-2">Star Schema Dimensional Model</div>
               <div className="grid grid-cols-2 gap-2.5 text-xs">
-                <div className="bg-white border border-slate-200 rounded-lg p-2.5">
-                  <div className="font-mono font-semibold text-[#123E82]">fact_procurement</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">date_key, project_key, supplier_key, total_spend, canvass_savings</div>
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5">
+                  <div className="font-mono font-semibold text-[#123E82] dark:text-blue-300">fact_procurement</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">date_key, project_key, supplier_key, total_spend, canvass_savings</div>
                 </div>
-                <div className="bg-white border border-slate-200 rounded-lg p-2.5">
-                  <div className="font-mono font-semibold text-[#123E82]">fact_vouchers_gl</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">dv_no, po_no, three_way_match, payable_amt, paid_amt</div>
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5">
+                  <div className="font-mono font-semibold text-[#123E82] dark:text-blue-300">fact_vouchers_gl</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">dv_no, po_no, three_way_match, payable_amt, paid_amt</div>
                 </div>
-                <div className="bg-white border border-slate-200 rounded-lg p-2.5">
-                  <div className="font-mono font-semibold text-slate-700">dim_project</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">Bukidnon Road, Pulangi Bridge, Civic Building, Head Office</div>
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5">
+                  <div className="font-mono font-semibold text-slate-700 dark:text-slate-200">dim_project</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Bukidnon Road, Pulangi Bridge, Civic Building, Head Office</div>
                 </div>
-                <div className="bg-white border border-slate-200 rounded-lg p-2.5">
-                  <div className="font-mono font-semibold text-slate-700">dim_supplier &amp; dim_material</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">{state.suppliers.length} suppliers · {state.materials.length} items</div>
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5">
+                  <div className="font-mono font-semibold text-slate-700 dark:text-slate-200">dim_supplier &amp; dim_material</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{state.suppliers.length} suppliers · {state.materials.length} items</div>
                 </div>
               </div>
             </div>
 
-            <pre className="bg-slate-900 text-blue-100 rounded-xl p-4 text-[11px] font-mono overflow-x-auto max-h-56 leading-relaxed">
+            <pre className="bg-slate-900 dark:bg-slate-950 text-blue-100 border border-slate-800 rounded-xl p-4 text-[11px] font-mono overflow-x-auto max-h-56 leading-relaxed">
               {SQL_WAREHOUSE_SCHEMA}
             </pre>
           </div>
@@ -292,20 +292,20 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
 
       {/* Primary BI Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-display text-base font-bold text-slate-900">Budget vs Actual Spend</h2>
-              <p className="text-xs text-slate-500">Bukidnon active project allocations vs PO commitments</p>
+              <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Budget vs Actual Spend</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Active project allocations vs PO commitments</p>
             </div>
           </div>
           <BudgetVsActualChart data={metrics.projectSeries} />
         </div>
 
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs">
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs">
           <div className="mb-4">
-            <h2 className="font-display text-base font-bold text-slate-900">Spend by Material Category</h2>
-            <p className="text-xs text-slate-500">Distribution across road, bridge, building &amp; ICT</p>
+            <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Spend by Material Category</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Distribution across road, bridge, building &amp; ICT</p>
           </div>
           <CategoryDonutChart
             data={metrics.categoryDonut}
@@ -316,25 +316,25 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
 
       {/* Second BI Row: Monthly Trend + Top Suppliers */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs">
+        <div className="lg:col-span-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs">
           <div className="mb-3">
-            <h2 className="font-display text-base font-bold text-slate-900">Monthly Procurement Trend</h2>
-            <p className="text-xs text-slate-500">Cumulative PO spend velocity by month</p>
+            <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Monthly Procurement Trend</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Cumulative PO spend velocity by month</p>
           </div>
           <MonthlyTrendChart data={metrics.trendData} />
         </div>
 
-        <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs">
+        <div className="lg:col-span-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-display text-base font-bold text-slate-900">Top Suppliers Ranking</h2>
-              <p className="text-xs text-slate-500">Awarded contract volume across Bukidnon vendors</p>
+              <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Top Suppliers Ranking</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Awarded contract volume across accredited vendors</p>
             </div>
             {canAccess('reports') && (
               <button
                 type="button"
                 onClick={() => onNavigate('reports')}
-                className="text-xs font-semibold text-[#2C6FE0] hover:underline inline-flex items-center gap-1 cursor-pointer"
+                className="text-xs font-semibold text-[#2C6FE0] dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
               >
                 Full Report <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -348,14 +348,14 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
               return (
                 <div key={sup.id} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-slate-800 truncate pr-3">
+                    <span className="font-medium text-slate-800 dark:text-slate-200 truncate pr-3">
                       {i + 1}. {sup.name}
                     </span>
-                    <span className="font-mono font-semibold text-slate-900 shrink-0 tabular-nums">
+                    <span className="font-mono font-semibold text-slate-900 dark:text-slate-100 shrink-0 tabular-nums">
                       {formatPHP(sup.total)}
                     </span>
                   </div>
-                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-[#2C6FE0] rounded-full"
                       style={{ width: `${Math.max(4, pct)}%` }}

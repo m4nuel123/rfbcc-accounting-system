@@ -168,8 +168,8 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">Disbursement Vouchers (DV)</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">Disbursement Vouchers (DV)</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             3-Way Match verification (PO + Receiving Report + Supplier Invoice), approval chain, and GL payment posting.
           </p>
         </div>
@@ -185,9 +185,9 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto shadow-xs">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-xs">
         <table className="w-full text-xs min-w-[820px]">
-          <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+          <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
             <tr>
               <th className="px-4 py-3 text-left font-semibold">DV No.</th>
               <th className="px-4 py-3 text-left font-semibold">PO / RR / Invoice</th>
@@ -199,31 +199,31 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
               <th className="px-4 py-3 text-right font-semibold">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {state.vouchers.map((dv) => (
-              <tr key={dv.id} className="hover:bg-slate-50/70">
-                <td className="px-4 py-3 font-mono font-semibold text-[#123E82]">{dv.dvNo}</td>
-                <td className="px-4 py-3 font-mono text-slate-600">
+              <tr key={dv.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300">{dv.dvNo}</td>
+                <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400">
                   {dv.poNo} · {dv.rrNo} · {dv.invoiceNo}
                 </td>
-                <td className="px-4 py-3 font-medium text-slate-900">{dv.supplierName}</td>
+                <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{dv.supplierName}</td>
                 <td className="px-4 py-3 text-center">
                   {dv.threeWayMatched ? (
-                    <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                    <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold">
                       <CheckCircle2 className="w-3.5 h-3.5" /> Verified
                     </span>
                   ) : (
-                    <span className="text-amber-700 font-semibold">Variance</span>
+                    <span className="text-amber-700 dark:text-amber-400 font-semibold">Variance</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums">
+                <td className="px-4 py-3 text-right font-mono font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
                   {formatPHP(dv.invoiceAmount)}
                 </td>
-                <td className="px-4 py-3 font-mono text-slate-600">{dv.dueDate}</td>
+                <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400">{dv.dueDate}</td>
                 <td className="px-4 py-3">
                   <StatusText status={dv.status} />
                   {dv.paymentRef && (
-                    <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+                    <div className="text-[11px] font-mono text-slate-400 dark:text-slate-500 mt-0.5">
                       {dv.paymentMethod}: {dv.paymentRef}
                     </div>
                   )}
@@ -241,7 +241,7 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
                       <button
                         type="button"
                         onClick={() => handleCancelDV(dv.id)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/60 hover:bg-red-100 dark:hover:bg-red-900/60 rounded-lg cursor-pointer"
                       >
                         <XCircle className="w-3.5 h-3.5" /> Cancel
                       </button>
@@ -268,21 +268,21 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
 
       {/* Create 3-Way Match Voucher Modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h3 className="font-display text-base font-bold text-slate-900">Create 3-Way Match Voucher</h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Create 3-Way Match Voucher</h3>
               <button
                 type="button"
                 onClick={() => setShowCreate(false)}
-                className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer"
+                className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <form onSubmit={handleCreateDV} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Receiving Report (RR)</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Receiving Report (RR)</label>
                 <select
                   value={selectedRrId}
                   onChange={(e) => {
@@ -290,7 +290,7 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
                     setSelectedRrId(e.target.value);
                     if (rr) setInvoiceAmount(String(rr.receivedAmount));
                   }}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 >
                   {eligibleRRs.map((rr) => (
                     <option key={rr.id} value={rr.id}>
@@ -301,42 +301,42 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Supplier Invoice Amount (₱)</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Supplier Invoice Amount (₱)</label>
                   <input
                     type="number"
                     step="0.01"
                     value={invoiceAmount}
                     onChange={(e) => setInvoiceAmount(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-mono"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg font-mono bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Payment Due Date</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Payment Due Date</label>
                   <input
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-mono"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg font-mono bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     required
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Remarks</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Remarks</label>
                 <input
                   type="text"
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
                   placeholder="Voucher payment particulars"
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowCreate(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                  className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -354,22 +354,22 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
 
       {/* Mark Paid Modal */}
       {payDv && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
-          <form onSubmit={handleConfirmPayment} className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 space-y-4">
-            <h3 className="font-display text-base font-bold text-slate-900">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+          <form onSubmit={handleConfirmPayment} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-6 space-y-4">
+            <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
               Record Payment · {payDv.dvNo}
             </h3>
-            <div className="bg-slate-50 rounded-xl p-3 text-xs flex justify-between">
-              <span className="text-slate-600">{payDv.supplierName}</span>
-              <span className="font-mono font-bold text-slate-900">{formatPHP(payDv.invoiceAmount)}</span>
+            <div className="bg-slate-50 dark:bg-slate-800/70 rounded-xl p-3 text-xs flex justify-between">
+              <span className="text-slate-600 dark:text-slate-300">{payDv.supplierName}</span>
+              <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{formatPHP(payDv.invoiceAmount)}</span>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Method</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Method</label>
                 <select
                   value={payMethod}
                   onChange={(e) => setPayMethod(e.target.value as 'Check' | 'Bank Transfer' | 'Cash')}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 >
                   <option value="Check">Check</option>
                   <option value="Bank Transfer">Bank Transfer</option>
@@ -377,12 +377,12 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Check / Ref No.</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Check / Ref No.</label>
                 <input
                   type="text"
                   value={payRef}
                   onChange={(e) => setPayRef(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-mono"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg font-mono bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   required
                 />
               </div>
@@ -391,7 +391,7 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
               <button
                 type="button"
                 onClick={() => setPayDv(null)}
-                className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
               >
                 Cancel
               </button>

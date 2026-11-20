@@ -356,8 +356,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-slate-900">Management Reports Center</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">Management Reports Center</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             41 pre-built MIS &amp; financial reports across Monthly, Quarterly, Semi-Annual, Yearly, and Custom date ranges.
           </p>
         </div>
@@ -372,7 +372,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 generated.rows
               )
             }
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" /> Export CSV
           </button>
@@ -399,15 +399,17 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       </div>
 
       {/* Report Builder Controls */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-xs">
-        <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-xl w-fit">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-xs">
+        <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl w-fit">
           {(Object.keys(REPORT_CATALOG) as ReportCategory[]).map((cat) => (
             <button
               key={cat}
               type="button"
               onClick={() => handleCategoryChange(cat)}
               className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                moduleCat === cat ? 'bg-white text-[#123E82] shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                moduleCat === cat
+                  ? 'bg-white dark:bg-slate-900 text-[#123E82] dark:text-blue-300 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
               }`}
             >
               {cat}
@@ -417,11 +419,11 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div className="lg:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Report Type</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Report Type</label>
             <select
               value={reportName}
               onChange={(e) => setReportName(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white font-medium"
+              className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium"
             >
               {REPORT_CATALOG[moduleCat].map((r) => (
                 <option key={r} value={r}>
@@ -432,11 +434,11 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Period</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Period</label>
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value as PeriodPreset)}
-              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+              className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
             >
               <option value="Daily">Daily</option>
               <option value="Weekly">Weekly</option>
@@ -449,11 +451,11 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Project</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Project</label>
             <select
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+              className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
             >
               <option value="All">All Projects</option>
               {state.projects.map((p) => (
@@ -465,11 +467,11 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Supplier</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Supplier</label>
             <select
               value={supplierFilter}
               onChange={(e) => setSupplierFilter(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+              className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
             >
               <option value="All">All Suppliers</option>
               {state.suppliers.map((s) => (
@@ -484,29 +486,29 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         {period === 'Custom' && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Start Date</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Start Date</label>
               <input
                 type="date"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-mono"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg font-mono"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">End Date</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">End Date</label>
               <input
                 type="date"
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-mono"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg font-mono"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Status Filter</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Status Filter</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
               >
                 <option value="All">All Statuses</option>
                 <option value="Approved">Approved</option>
@@ -522,27 +524,27 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       {generated.summaryCards.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {generated.summaryCards.map((c) => (
-            <div key={c.label} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
-              <div className="text-xs text-slate-500">{c.label}</div>
-              <div className="text-lg font-bold font-mono text-[#123E82] mt-1 tabular-nums">{c.value}</div>
+            <div key={c.label} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs">
+              <div className="text-xs text-slate-500 dark:text-slate-400">{c.label}</div>
+              <div className="text-lg font-bold font-mono text-[#123E82] dark:text-blue-300 mt-1 tabular-nums">{c.value}</div>
             </div>
           ))}
         </div>
       )}
 
       {/* Report Data Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto shadow-xs">
-        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 font-bold text-slate-900">
-            <FileBarChart2 className="w-4 h-4 text-[#2C6FE0]" />
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-xs">
+        <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-slate-100">
+            <FileBarChart2 className="w-4 h-4 text-[#2C6FE0] dark:text-blue-400" />
             <span>
               {moduleCat} · {reportName} ({generated.periodLabel})
             </span>
           </div>
-          <span className="text-slate-400 font-mono">{generated.rows.length} rows</span>
+          <span className="text-slate-400 dark:text-slate-500 font-mono">{generated.rows.length} rows</span>
         </div>
         <table className="w-full text-xs min-w-[720px]">
-          <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+          <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
             <tr>
               {generated.columns.map((col) => (
                 <th key={col} className="px-4 py-3 text-left font-semibold">
@@ -551,18 +553,18 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {generated.rows.length === 0 ? (
               <tr>
-                <td colSpan={generated.columns.length} className="p-6 text-center text-slate-500">
+                <td colSpan={generated.columns.length} className="p-6 text-center text-slate-500 dark:text-slate-400">
                   No matching records found for the selected filters.
                 </td>
               </tr>
             ) : (
               generated.rows.map((r, i) => (
-                <tr key={i} className="hover:bg-slate-50/70">
+                <tr key={i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
                   {r.map((cell, cIdx) => (
-                    <td key={cIdx} className="px-4 py-2.5 font-mono text-[11px] text-slate-800">
+                    <td key={cIdx} className="px-4 py-2.5 font-mono text-[11px] text-slate-800 dark:text-slate-200">
                       {cell}
                     </td>
                   ))}

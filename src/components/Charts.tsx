@@ -30,8 +30,15 @@ export const BudgetVsActualChart: React.FC<{ data: BudgetProjectDatum[] }> = ({ 
           const y = padT + innerH * (1 - t);
           return (
             <g key={t}>
-              <line x1={padL} y1={y} x2={chartW - padR} y2={y} stroke="#E2E8F0" strokeDasharray={t === 0 ? undefined : '3 3'} />
-              <text x={padL - 8} y={y + 4} textAnchor="end" className="fill-slate-400 text-[10px] font-mono">
+              <line
+                x1={padL}
+                y1={y}
+                x2={chartW - padR}
+                y2={y}
+                className="stroke-slate-200 dark:stroke-slate-800"
+                strokeDasharray={t === 0 ? undefined : '3 3'}
+              />
+              <text x={padL - 8} y={y + 4} textAnchor="end" className="fill-slate-400 dark:fill-slate-500 text-[10px] font-mono">
                 {formatCompactPHP(maxVal * t)}
               </text>
             </g>
@@ -50,7 +57,7 @@ export const BudgetVsActualChart: React.FC<{ data: BudgetProjectDatum[] }> = ({ 
                 width={barW}
                 height={Math.max(2, bH)}
                 rx={4}
-                fill="#CBD5E1"
+                className="fill-slate-300 dark:fill-slate-700"
               >
                 <title>{`${d.name} Budget: ${formatPHP(d.budget)}`}</title>
               </rect>
@@ -64,19 +71,19 @@ export const BudgetVsActualChart: React.FC<{ data: BudgetProjectDatum[] }> = ({ 
               >
                 <title>{`${d.name} Actual: ${formatPHP(d.actual)}`}</title>
               </rect>
-              <text x={cx} y={chartH - 18} textAnchor="middle" className="fill-slate-600 text-[10px] font-medium">
+              <text x={cx} y={chartH - 18} textAnchor="middle" className="fill-slate-600 dark:fill-slate-300 text-[10px] font-medium">
                 {shortName}
               </text>
-              <text x={cx} y={chartH - 5} textAnchor="middle" className="fill-slate-400 text-[9px]">
+              <text x={cx} y={chartH - 5} textAnchor="middle" className="fill-slate-400 dark:fill-slate-500 text-[9px]">
                 {d.type}
               </text>
             </g>
           );
         })}
       </svg>
-      <div className="flex items-center justify-end gap-5 mt-2 text-xs text-slate-600">
+      <div className="flex items-center justify-end gap-5 mt-2 text-xs text-slate-600 dark:text-slate-400">
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-xs bg-slate-300 inline-block" />
+          <span className="w-2.5 h-2.5 rounded-xs bg-slate-300 dark:bg-slate-700 inline-block" />
           Approved Budget
         </span>
         <span className="flex items-center gap-1.5">
@@ -111,7 +118,7 @@ export const CategoryDonutChart: React.FC<{ data: DonutDatum[]; centerLabel: str
     <div className="flex flex-col sm:flex-row items-center gap-6">
       <div className="relative shrink-0">
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Spend by Category">
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="#F1F5F9" strokeWidth="22" />
+          <circle cx={cx} cy={cy} r={r} fill="none" className="stroke-slate-100 dark:stroke-slate-800" strokeWidth="22" />
           {total > 0 &&
             data.map((d) => {
               const frac = d.value / total;
@@ -137,8 +144,8 @@ export const CategoryDonutChart: React.FC<{ data: DonutDatum[]; centerLabel: str
             })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-4">
-          <span className="text-[11px] text-slate-400 font-medium">Total Spend</span>
-          <span className="text-sm font-bold font-mono text-slate-900">{centerLabel}</span>
+          <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">Total Spend</span>
+          <span className="text-sm font-bold font-mono text-slate-900 dark:text-slate-100">{centerLabel}</span>
         </div>
       </div>
 
@@ -149,11 +156,11 @@ export const CategoryDonutChart: React.FC<{ data: DonutDatum[]; centerLabel: str
             <div key={d.label} className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="w-2.5 h-2.5 rounded-xs shrink-0" style={{ backgroundColor: d.color }} />
-                <span className="text-slate-700 truncate">{d.label}</span>
+                <span className="text-slate-700 dark:text-slate-300 truncate">{d.label}</span>
               </div>
               <div className="flex items-center gap-2 shrink-0 font-mono tabular-nums">
-                <span className="text-slate-900 font-semibold">{formatCompactPHP(d.value)}</span>
-                <span className="text-slate-400 w-9 text-right">{pct}%</span>
+                <span className="text-slate-900 dark:text-slate-100 font-semibold">{formatCompactPHP(d.value)}</span>
+                <span className="text-slate-400 dark:text-slate-500 w-9 text-right">{pct}%</span>
               </div>
             </div>
           );
@@ -203,8 +210,15 @@ export const MonthlyTrendChart: React.FC<{ data: TrendDatum[] }> = ({ data }) =>
         const y = padT + innerH * (1 - t);
         return (
           <g key={t}>
-            <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="#E2E8F0" strokeDasharray={t === 0 ? undefined : '3 3'} />
-            <text x={padL - 8} y={y + 4} textAnchor="end" className="fill-slate-400 text-[10px] font-mono">
+            <line
+              x1={padL}
+              y1={y}
+              x2={w - padR}
+              y2={y}
+              className="stroke-slate-200 dark:stroke-slate-800"
+              strokeDasharray={t === 0 ? undefined : '3 3'}
+            />
+            <text x={padL - 8} y={y + 4} textAnchor="end" className="fill-slate-400 dark:fill-slate-500 text-[10px] font-mono">
               {formatCompactPHP(maxVal * t)}
             </text>
           </g>
@@ -214,10 +228,16 @@ export const MonthlyTrendChart: React.FC<{ data: TrendDatum[] }> = ({ data }) =>
       {linePath && <path d={linePath} fill="none" stroke="#2C6FE0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
       {points.map((p) => (
         <g key={p.month}>
-          <circle cx={p.x} cy={p.y} r={4} fill="#FFFFFF" stroke="#123E82" strokeWidth="2">
+          <circle
+            cx={p.x}
+            cy={p.y}
+            r={4}
+            className="fill-white dark:fill-slate-900 stroke-[#123E82] dark:stroke-blue-400"
+            strokeWidth="2"
+          >
             <title>{`${p.month}: ${formatPHP(p.amount)}`}</title>
           </circle>
-          <text x={p.x} y={h - 8} textAnchor="middle" className="fill-slate-500 text-[10px] font-medium">
+          <text x={p.x} y={h - 8} textAnchor="middle" className="fill-slate-500 dark:fill-slate-400 text-[10px] font-medium">
             {p.month}
           </text>
         </g>

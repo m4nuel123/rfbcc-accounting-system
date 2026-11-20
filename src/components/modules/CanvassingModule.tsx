@@ -187,15 +187,15 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold text-slate-900">Supplier Canvassing</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
+        <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">Supplier Canvassing</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
           Compare supplier quotations per item, add new accredited suppliers on the fly, and award winners to generate Purchase Requests.
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto shadow-xs">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-xs">
         <table className="w-full text-xs min-w-[760px]">
-          <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+          <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
             <tr>
               <th className="px-4 py-3 text-left font-semibold">Canvass No.</th>
               <th className="px-4 py-3 text-left font-semibold">Req Ref</th>
@@ -206,22 +206,22 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
               <th className="px-4 py-3 text-right font-semibold">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {state.canvasses.map((cnv) => {
               const proj = state.projects.find((p) => p.id === cnv.projectId);
               return (
-                <tr key={cnv.id} className="hover:bg-slate-50/70">
-                  <td className="px-4 py-3 font-mono font-semibold text-[#123E82]">{cnv.canvassNo}</td>
-                  <td className="px-4 py-3 font-mono text-slate-700">{cnv.reqNo}</td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{proj?.name || cnv.projectId}</td>
-                  <td className="px-4 py-3 text-slate-600">{cnv.category}</td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums">{cnv.quotes.length}</td>
+                <tr key={cnv.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                  <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300">{cnv.canvassNo}</td>
+                  <td className="px-4 py-3 font-mono text-slate-700 dark:text-slate-300">{cnv.reqNo}</td>
+                  <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{proj?.name || cnv.projectId}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{cnv.category}</td>
+                  <td className="px-4 py-3 text-right font-mono text-slate-900 dark:text-slate-100 tabular-nums">{cnv.quotes.length}</td>
                   <td className="px-4 py-3"><StatusText status={cnv.status} /></td>
                   <td className="px-4 py-3 text-right whitespace-nowrap space-x-1.5">
                     <button
                       type="button"
                       onClick={() => onOpenPrint({ kind: 'doc-slip', docType: 'Canvass', refId: cnv.id })}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg cursor-pointer"
                     >
                       <Printer className="w-3.5 h-3.5" /> Slip
                     </button>
@@ -243,21 +243,21 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
 
       {/* Encode Quotes & Award Modal */}
       {activeCanvass && activeReq && (
-        <div className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-4xl overflow-hidden my-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <div className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-4xl overflow-hidden my-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <h3 className="font-display text-base font-bold text-slate-900">
+                <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
                   Abstract of Canvass · {activeCanvass.canvassNo}
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Requisition {activeReq.reqNo} · {activeReq.purpose}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setActiveCanvassId(null)}
-                className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer"
+                className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -265,31 +265,31 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
 
             <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
               {activeCanvass.status === 'Open' && (
-                <form onSubmit={handleAddQuote} className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                <form onSubmit={handleAddQuote} className="bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/60 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                   <div className="sm:col-span-4">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Supplier</label>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Supplier</label>
                     <select
                       value={quoteSupplierId}
                       onChange={(e) => handleSupplierChange(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                      className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     >
                       {state.suppliers.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.name}
                         </option>
                       ))}
-                      <option value="__ADD_NEW__" className="font-bold text-[#123E82]">
+                      <option value="__ADD_NEW__" className="font-bold text-[#123E82] dark:text-blue-300">
                         + Add New Supplier…
                       </option>
                     </select>
                   </div>
 
                   <div className="sm:col-span-3">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Item</label>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Item</label>
                     <select
                       value={quoteMaterialId}
                       onChange={(e) => setQuoteMaterialId(e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                      className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     >
                       {activeReq.items.map((it) => (
                         <option key={it.materialId} value={it.materialId}>
@@ -300,36 +300,36 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Unit Price (₱)</label>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Unit Price (₱)</label>
                     <input
                       type="number"
                       step="0.01"
                       value={quotePrice}
                       onChange={(e) => setQuotePrice(e.target.value)}
                       placeholder="0.00"
-                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg font-mono bg-white"
+                      className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg font-mono bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                       required
                     />
                   </div>
 
                   <div className="sm:col-span-1">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Days</label>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Days</label>
                     <input
                       type="number"
                       value={quoteLeadDays}
                       onChange={(e) => setQuoteLeadDays(e.target.value)}
-                      className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg font-mono bg-white"
+                      className="w-full px-2.5 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg font-mono bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     />
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Remarks</label>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Remarks</label>
                     <input
                       type="text"
                       value={quoteRemarks}
                       onChange={(e) => setQuoteRemarks(e.target.value)}
                       placeholder="Terms / delivery"
-                      className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                      className="w-full px-2.5 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                     />
                   </div>
 
@@ -354,23 +354,23 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
                   const lowestId = quotes[0]?.id;
 
                   return (
-                    <div key={rItem.materialId} className="border border-slate-200 rounded-xl overflow-hidden">
-                      <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between text-xs">
-                        <span className="font-bold text-slate-900">
+                    <div key={rItem.materialId} className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                      <div className="bg-slate-50 dark:bg-slate-800/80 px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-900 dark:text-slate-100">
                           {rItem.materialName} · {rItem.qty} {rItem.unit}
                         </span>
-                        <span className="font-mono text-slate-500">
+                        <span className="font-mono text-slate-500 dark:text-slate-400">
                           Budget Est: {formatPHP(rItem.estUnitPrice)}/{rItem.unit}
                         </span>
                       </div>
 
                       {quotes.length === 0 ? (
-                        <div className="p-4 text-xs text-slate-500">
+                        <div className="p-4 text-xs text-slate-500 dark:text-slate-400">
                           No supplier quotations encoded yet for this item.
                         </div>
                       ) : (
                         <table className="w-full text-xs">
-                          <thead className="text-slate-500 border-b border-slate-100">
+                          <thead className="text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
                             <tr>
                               <th className="px-4 py-2 text-left">Supplier</th>
                               <th className="px-4 py-2 text-right">Unit Price</th>
@@ -379,26 +379,26 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
                               <th className="px-4 py-2 text-right">Selection</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100">
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {quotes.map((q) => {
                               const isSelected = q.isWinner || (!quotes.some((x) => x.isWinner) && q.id === lowestId);
                               return (
-                                <tr key={q.id} className={isSelected ? 'bg-emerald-50/40' : ''}>
-                                  <td className="px-4 py-2.5 font-medium text-slate-900">
+                                <tr key={q.id} className={isSelected ? 'bg-emerald-50/40 dark:bg-emerald-950/30' : ''}>
+                                  <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-slate-100">
                                     {q.supplierName}
                                     {q.id === lowestId && (
-                                      <span className="ml-2 text-[11px] text-emerald-700 font-semibold">
+                                      <span className="ml-2 text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
                                         Lowest Offer
                                       </span>
                                     )}
                                   </td>
-                                  <td className="px-4 py-2.5 text-right font-mono tabular-nums">
+                                  <td className="px-4 py-2.5 text-right font-mono text-slate-800 dark:text-slate-200 tabular-nums">
                                     {formatPHP(q.unitPrice)}
                                   </td>
-                                  <td className="px-4 py-2.5 text-right font-mono font-semibold tabular-nums">
+                                  <td className="px-4 py-2.5 text-right font-mono font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
                                     {formatPHP(q.unitPrice * rItem.qty)}
                                   </td>
-                                  <td className="px-4 py-2.5 text-center font-mono">{q.leadTimeDays}d</td>
+                                  <td className="px-4 py-2.5 text-center font-mono text-slate-700 dark:text-slate-300">{q.leadTimeDays}d</td>
                                   <td className="px-4 py-2.5 text-right">
                                     {activeCanvass.status === 'Open' ? (
                                       <button
@@ -407,13 +407,13 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
                                         className={`px-2.5 py-1 text-xs font-semibold rounded-md cursor-pointer ${
                                           isSelected
                                             ? 'bg-emerald-600 text-white'
-                                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
                                         }`}
                                       >
                                         {isSelected ? 'Selected' : 'Select'}
                                       </button>
                                     ) : (
-                                      <span className="text-xs font-semibold text-emerald-700">
+                                      <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
                                         {q.isWinner ? 'Awarded' : '—'}
                                       </span>
                                     )}
@@ -430,8 +430,8 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
               </div>
 
               {activeCanvass.status === 'Open' && (
-                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                  <span className="text-xs text-slate-500">
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     Each requested item requires at least 1 quote before generating Purchase Request.
                   </span>
                   <button
@@ -455,47 +455,47 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
       {/* Nested Modal: + Add New Supplier */}
       {showAddSupplier && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
-              <h4 className="font-display text-sm font-bold text-[#123E82]">+ Add New Supplier</h4>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
+              <h4 className="font-display text-sm font-bold text-[#123E82] dark:text-blue-300">+ Add New Supplier</h4>
               <button
                 type="button"
                 onClick={() => setShowAddSupplier(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <form onSubmit={handleSaveNewSupplier} className="p-5 space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Supplier Name</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Supplier Name</label>
                 <input
                   type="text"
                   value={newSupForm.name}
                   onChange={(e) => setNewSupForm({ ...newSupForm, name: e.target.value })}
-                  placeholder="e.g. Bukidnon Hardware & Aggregates"
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                  placeholder="e.g. Caraga Hardware & Aggregates"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   required
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Contact No.</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact No.</label>
                   <input
                     type="text"
                     value={newSupForm.contact}
                     onChange={(e) => setNewSupForm({ ...newSupForm, contact: e.target.value })}
                     placeholder="0917-xxx-xxxx"
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Payment Terms</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Payment Terms</label>
                   <input
                     type="text"
                     value={newSupForm.terms}
                     onChange={(e) => setNewSupForm({ ...newSupForm, terms: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                    className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   />
                 </div>
               </div>
@@ -503,7 +503,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowAddSupplier(false)}
-                  className="px-3.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                  className="px-3.5 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
