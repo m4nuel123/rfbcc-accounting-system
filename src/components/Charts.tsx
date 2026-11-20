@@ -8,7 +8,10 @@ interface BudgetProjectDatum {
   actual: number;
 }
 
-export const BudgetVsActualChart: React.FC<{ data: BudgetProjectDatum[] }> = ({ data }) => {
+export const BudgetVsActualChart: React.FC<{
+  data: BudgetProjectDatum[];
+  accentColor?: string;
+}> = ({ data, accentColor = '#2C6FE0' }) => {
   const maxVal = Math.max(1, ...data.flatMap((d) => [d.budget, d.actual]));
   const chartW = 540;
   const chartH = 220;
@@ -67,7 +70,7 @@ export const BudgetVsActualChart: React.FC<{ data: BudgetProjectDatum[] }> = ({ 
                 width={barW}
                 height={Math.max(2, aH)}
                 rx={4}
-                fill="#2C6FE0"
+                fill={accentColor}
               >
                 <title>{`${d.name} Actual: ${formatPHP(d.actual)}`}</title>
               </rect>
@@ -87,7 +90,7 @@ export const BudgetVsActualChart: React.FC<{ data: BudgetProjectDatum[] }> = ({ 
           Approved Budget
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-xs bg-[#2C6FE0] inline-block" />
+          <span className="w-2.5 h-2.5 rounded-xs inline-block" style={{ backgroundColor: accentColor }} />
           Actual Spend
         </span>
       </div>
@@ -175,7 +178,11 @@ interface TrendDatum {
   amount: number;
 }
 
-export const MonthlyTrendChart: React.FC<{ data: TrendDatum[] }> = ({ data }) => {
+export const MonthlyTrendChart: React.FC<{
+  data: TrendDatum[];
+  accentColor?: string;
+  primaryColor?: string;
+}> = ({ data, accentColor = '#2C6FE0', primaryColor = '#123E82' }) => {
   const maxVal = Math.max(1, ...data.map((d) => d.amount));
   const w = 520;
   const h = 180;
@@ -197,13 +204,14 @@ export const MonthlyTrendChart: React.FC<{ data: TrendDatum[] }> = ({ data }) =>
     points.length > 0
       ? `${linePath} L ${points[points.length - 1].x} ${padT + innerH} L ${points[0].x} ${padT + innerH} Z`
       : '';
+  const gradId = `trendArea-${accentColor.replace('#', '')}`;
 
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-auto overflow-visible" role="img" aria-label="Monthly Procurement Trend">
       <defs>
-        <linearGradient id="trendAreaBlue" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#2C6FE0" stopOpacity="0.24" />
-          <stop offset="100%" stopColor="#2C6FE0" stopOpacity="0.01" />
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={accentColor} stopOpacity="0.24" />
+          <stop offset="100%" stopColor={accentColor} stopOpacity="0.01" />
         </linearGradient>
       </defs>
       {[0, 0.5, 1].map((t) => {
@@ -224,15 +232,16 @@ export const MonthlyTrendChart: React.FC<{ data: TrendDatum[] }> = ({ data }) =>
           </g>
         );
       })}
-      {areaPath && <path d={areaPath} fill="url(#trendAreaBlue)" />}
-      {linePath && <path d={linePath} fill="none" stroke="#2C6FE0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
+      {areaPath && <path d={areaPath} fill={`url(#${gradId})`} />}
+      {linePath && <path d={linePath} fill="none" stroke={accentColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
       {points.map((p) => (
         <g key={p.month}>
           <circle
             cx={p.x}
             cy={p.y}
             r={4}
-            className="fill-white dark:fill-slate-900 stroke-[#123E82] dark:stroke-blue-400"
+            className="fill-white dark:fill-slate-900"
+            stroke={primaryColor}
             strokeWidth="2"
           >
             <title>{`${p.month}: ${formatPHP(p.amount)}`}</title>

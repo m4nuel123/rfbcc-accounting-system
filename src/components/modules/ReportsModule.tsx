@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Download, FileBarChart2, Printer } from 'lucide-react';
-import { Employee, ERPState, PrintDocument } from '../../types/erp';
+import { Download, FileBarChart2, Lock, Printer } from 'lucide-react';
+import { Company, Employee, ERPState, PermissionId, PrintDocument } from '../../types/erp';
 import {
   downloadCSV,
   formatPHP,
@@ -12,6 +12,8 @@ import {
 interface ReportsModuleProps {
   state: ERPState;
   currentEmployee: Employee;
+  activeCompany: Company;
+  can: (perm: PermissionId) => boolean;
   onOpenPrint: (doc: PrintDocument) => void;
 }
 
@@ -74,6 +76,8 @@ const REPORT_CATALOG: Record<ReportCategory, string[]> = {
 export const ReportsModule: React.FC<ReportsModuleProps> = ({
   state,
   currentEmployee,
+  activeCompany,
+  can,
   onOpenPrint,
 }) => {
   const [moduleCat, setModuleCat] = useState<ReportCategory>('Purchasing');
@@ -84,6 +88,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   const [projectFilter, setProjectFilter] = useState('All');
   const [supplierFilter, setSupplierFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+
+  const canGenerate = can('generate_reports');
+  const canExport = can('export_reports');
 
   const handleCategoryChange = (cat: ReportCategory) => {
     setModuleCat(cat);
@@ -151,6 +158,31 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           { label: 'Unpaid Vouchers', value: String(unpaid.length) },
           { label: 'Total Payable', value: formatPHP(unpaid.reduce((s, v) => s + v.invoiceAmount, 0)) },
         ];
+      } else if (reportName === 'Accounts Receivable Report') {
+        columns = ['JE No.', 'Date', 'Reference', 'Description', 'Billed (DR)', 'Collected (CR)'];
+        let totalBilled = 0;
+        let totalCollected = 0;
+        for (const je of jeInPeriod) {
+          for (const l of je.lines) {
+            if (l.accountCode === '1100') {
+              totalBilled += l.debit;
+              totalCollected += l.credit;
+              rows.push([
+                je.jeNo,
+                je.date,
+                je.reference,
+                je.description,
+                l.debit > 0 ? formatPHP(l.debit) : '—',
+                l.credit > 0 ? formatPHP(l.credit) : '—',
+              ]);
+            }
+          }
+        }
+        summaryCards = [
+          { label: 'Total Billed AR', value: formatPHP(totalBilled) },
+          { label: 'Collected Cash', value: formatPHP(totalCollected) },
+          { label: 'Open AR Balance', value: formatPHP(Math.max(0, totalBilled - totalCollected)) },
+        ];
       } else if (reportName === 'Income Statement' || reportName === 'Revenue Analysis' || reportName === 'Expense Analysis') {
         const rev = jeInPeriod.reduce(
           (s, j) => s + j.lines.filter((l) => l.accountCode.startsWith('4')).reduce((x, l) => x + l.credit - l.debit, 0),
@@ -180,7 +212,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           { label: 'Net Income', value: formatPHP(rev - exp) },
         ];
       } else {
-        // Trial Balance / Balance Sheet / Cash Flow / AR fallback
         columns = ['Code', 'Account Title', 'Type', 'Debit', 'Credit'];
         rows = state.accounts.map((a) => {
           const dr = jeInPeriod.reduce((s, j) => s + j.lines.filter((l) => l.accountCode === a.code).reduce((x, l) => x + l.debit, 0), 0);
@@ -317,7 +348,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         { label: 'Total Amount', value: formatPHP(dvs.reduce((s, v) => s + v.invoiceAmount, 0)) },
       ];
     } else {
-      // Tools & Equipment
       if (reportName === 'Inventory Summary') {
         columns = ['Asset ID', 'Tool / Equipment', 'Category', 'Project Site', 'Cost', 'Status'];
         rows = state.tools
@@ -346,7 +376,23 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     return { columns, rows, summaryCards, periodLabel };
   }, [state, moduleCat, reportName, period, customStart, customEnd, projectFilter, supplierFilter, statusFilter]);
 
-  const filtersSummary = `Period: ${generated.periodLabel} · Project: ${
+  if (!canGenerate) {
+    return (
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 max-w-xl mx-auto text-center space-y-3 shadow-xs">
+        <div className="w-12 h-12 rounded-2xl brand-soft-surface flex items-center justify-center mx-auto">
+          <Lock className="w-6 h-6" />
+        </div>
+        <h2 className="font-display text-lg font-bold text-slate-900 dark:text-slate-100">
+          Report Generation Restricted
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Your role in <strong>{activeCompany.name}</strong> requires the <code className="font-mono">generate_reports</code> permission to run management reports.
+        </p>
+      </div>
+    );
+  }
+
+  const filtersSummary = `Company: ${activeCompany.name} (${activeCompany.code}) · Period: ${generated.periodLabel} · Project: ${
     projectFilter === 'All' ? 'All' : state.projects.find((p) => p.id === projectFilter)?.name
   } · Supplier: ${
     supplierFilter === 'All' ? 'All' : state.suppliers.find((s) => s.id === supplierFilter)?.name
@@ -358,44 +404,46 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         <div>
           <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">Management Reports Center</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            41 pre-built MIS &amp; financial reports across Monthly, Quarterly, Semi-Annual, Yearly, and Custom date ranges.
+            {activeCompany.name} ({activeCompany.code}) MIS &amp; financial reports across Monthly, Quarterly, Semi-Annual, Yearly, and Custom date ranges.
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() =>
-              downloadCSV(
-                `RFB_${reportName.replace(/\s+/g, '_')}.csv`,
-                generated.columns,
-                generated.rows
-              )
-            }
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" /> Export CSV
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              onOpenPrint({
-                kind: 'report',
-                title: reportName,
-                moduleName: moduleCat,
-                periodLabel: generated.periodLabel,
-                filtersSummary,
-                generatedBy: `${currentEmployee.name} (${currentEmployee.position})`,
-                columns: generated.columns,
-                rows: generated.rows,
-                summaryCards: generated.summaryCards,
-              })
-            }
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-xl shadow-xs cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5" /> Print / Export PDF
-          </button>
-        </div>
+        {canExport && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                downloadCSV(
+                  `${activeCompany.code}_${reportName.replace(/\s+/g, '_')}.csv`,
+                  generated.columns,
+                  generated.rows
+                )
+              }
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" /> Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                onOpenPrint({
+                  kind: 'report',
+                  title: reportName,
+                  moduleName: moduleCat,
+                  periodLabel: generated.periodLabel,
+                  filtersSummary,
+                  generatedBy: `${currentEmployee.name} (${currentEmployee.position})`,
+                  columns: generated.columns,
+                  rows: generated.rows,
+                  summaryCards: generated.summaryCards,
+                })
+              }
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold brand-btn-primary rounded-xl shadow-xs cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" /> Print / Export PDF
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Report Builder Controls */}
@@ -408,7 +456,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               onClick={() => handleCategoryChange(cat)}
               className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
                 moduleCat === cat
-                  ? 'bg-white dark:bg-slate-900 text-[#123E82] dark:text-blue-300 shadow-xs'
+                  ? 'bg-white dark:bg-slate-900 brand-text-primary shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
               }`}
             >
@@ -526,7 +574,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           {generated.summaryCards.map((c) => (
             <div key={c.label} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs">
               <div className="text-xs text-slate-500 dark:text-slate-400">{c.label}</div>
-              <div className="text-lg font-bold font-mono text-[#123E82] dark:text-blue-300 mt-1 tabular-nums">{c.value}</div>
+              <div className="text-lg font-bold font-mono brand-text-primary mt-1 tabular-nums">{c.value}</div>
             </div>
           ))}
         </div>
@@ -536,9 +584,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-xs">
         <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-slate-100">
-            <FileBarChart2 className="w-4 h-4 text-[#2C6FE0] dark:text-blue-400" />
+            <FileBarChart2 className="w-4 h-4 brand-text-accent" />
             <span>
-              {moduleCat} · {reportName} ({generated.periodLabel})
+              {activeCompany.code} · {moduleCat} · {reportName} ({generated.periodLabel})
             </span>
           </div>
           <span className="text-slate-400 dark:text-slate-500 font-mono">{generated.rows.length} rows</span>
@@ -557,7 +605,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             {generated.rows.length === 0 ? (
               <tr>
                 <td colSpan={generated.columns.length} className="p-6 text-center text-slate-500 dark:text-slate-400">
-                  No matching records found for the selected filters.
+                  No matching {activeCompany.code} records found for the selected filters.
                 </td>
               </tr>
             ) : (

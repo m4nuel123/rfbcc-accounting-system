@@ -6,6 +6,30 @@
     --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     --font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+    /* Default Brand Theme: RFB Construction (Blue) */
+    --brand-primary: #123E82;
+    --brand-accent: #2C6FE0;
+    --brand-accent-hover: #1E56B8;
+    --brand-soft-bg: #EFF6FF;
+    --brand-soft-text: #123E82;
+    --brand-soft-border: #BFDBFE;
+    --brand-text-dark: #93C5FD;
+    --brand-soft-bg-dark: rgba(23, 37, 84, 0.55);
+    --brand-shell-border: rgba(191, 219, 254, 0.8);
+  }
+
+  /* RBI Construction Theme — exact swatch #113E2B */
+  html[data-company="RBI"] {
+    --brand-primary: #113E2B;
+    --brand-accent: #185B3F;
+    --brand-accent-hover: #0E3524;
+    --brand-soft-bg: #ECFDF5;
+    --brand-soft-text: #113E2B;
+    --brand-soft-border: #A7F3D0;
+    --brand-text-dark: #6EE7B7;
+    --brand-soft-bg-dark: rgba(6, 78, 59, 0.48);
+    --brand-shell-border: rgba(167, 243, 208, 0.65);
   }
 
   body {
@@ -14,12 +38,20 @@
     background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 45%, #e0f2fe 100%);
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
-    transition: background-color 180ms ease, color 180ms ease;
+    transition: background 180ms ease, background-color 180ms ease, color 180ms ease;
+  }
+
+  html[data-company="RBI"] body {
+    background: linear-gradient(135deg, #d6ede2 0%, #eef8f3 48%, #dff3e9 100%);
   }
 
   html.dark body {
     color: #f1f5f9;
     background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #0b1930 100%);
+  }
+
+  html.dark[data-company="RBI"] body {
+    background: linear-gradient(135deg, #020a07 0%, #071912 52%, #0c291d 100%);
   }
 
   h1, h2, h3, h4, .font-display {
@@ -29,6 +61,49 @@
   .font-mono, .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+}
+
+/* Company-aware semantic brand helpers */
+.brand-btn-primary {
+  background-color: var(--brand-accent);
+  color: #ffffff;
+}
+.brand-btn-primary:hover:not(:disabled) {
+  background-color: var(--brand-accent-hover);
+}
+.brand-btn-dark {
+  background-color: var(--brand-primary);
+  color: #ffffff;
+}
+.brand-text-primary {
+  color: var(--brand-primary);
+}
+html.dark .brand-text-primary {
+  color: var(--brand-text-dark);
+}
+.brand-text-accent {
+  color: var(--brand-accent);
+}
+html.dark .brand-text-accent {
+  color: var(--brand-text-dark);
+}
+.brand-soft-surface {
+  background-color: var(--brand-soft-bg);
+  color: var(--brand-soft-text);
+}
+html.dark .brand-soft-surface {
+  background-color: var(--brand-soft-bg-dark);
+  color: var(--brand-text-dark);
+}
+.brand-soft-outline {
+  background-color: var(--brand-soft-bg);
+  border-color: var(--brand-accent);
+  color: var(--brand-soft-text);
+}
+html.dark .brand-soft-outline {
+  background-color: var(--brand-soft-bg-dark);
+  border-color: var(--brand-text-dark);
+  color: var(--brand-text-dark);
 }
 
 /* Custom clean scrollbar */

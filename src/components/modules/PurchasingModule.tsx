@@ -1,12 +1,22 @@
 import React, { useState } from 'react';
 import { Check, FileCheck2, Printer, XCircle } from 'lucide-react';
-import { Employee, ERPState, PrintDocument, PurchaseOrder, PurchaseRequest } from '../../types/erp';
+import {
+  Company,
+  Employee,
+  ERPState,
+  PermissionId,
+  PrintDocument,
+  PurchaseOrder,
+  PurchaseRequest,
+} from '../../types/erp';
 import { formatPHP, nextCode, todayISO } from '../../utils/formatters';
 import { StatusText } from '../StatusText';
 
 interface PurchasingModuleProps {
   state: ERPState;
   currentEmployee: Employee;
+  activeCompany: Company;
+  can: (perm: PermissionId) => boolean;
   onUpdateState: (updater: (prev: ERPState) => ERPState) => void;
   onOpenPrint: (doc: PrintDocument) => void;
 }
@@ -14,13 +24,20 @@ interface PurchasingModuleProps {
 export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
   state,
   currentEmployee,
+  activeCompany,
+  can,
   onUpdateState,
   onOpenPrint,
 }) => {
   const [rejectPrId, setRejectPrId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
+  const canApprove = can('approve_transactions');
+  const canCreate = can('create_transactions');
+  const docPrefix = (code: string) => (activeCompany.code === 'RFB' ? code : `${activeCompany.code}-${code}`);
+
   const advanceSignatory = (pr: PurchaseRequest) => {
+    if (!canApprove) return;
     const stamp = {
       employeeId: currentEmployee.id,
       name: currentEmployee.name,
@@ -48,7 +65,7 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
 
   const handleReject = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rejectPrId) return;
+    if (!canApprove || !rejectPrId) return;
     onUpdateState((prev) => ({
       ...prev,
       purchaseRequests: prev.purchaseRequests.map((p) =>
@@ -62,8 +79,7 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
   };
 
   const handleGeneratePO = (pr: PurchaseRequest) => {
-    if (pr.status !== 'Approved') return;
-    // Group PR items by supplier so each supplier receives a clean PO
+    if (!canCreate || pr.status !== 'Approved') return;
     const bySupplier = new Map<string, typeof pr.items>();
     for (const it of pr.items) {
       const list = bySupplier.get(it.supplierId) || [];
@@ -78,10 +94,11 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
     const expectedStr = expected.toISOString().slice(0, 10);
 
     for (const [supId, items] of bySupplier.entries()) {
-      const poNo = nextCode('PO', [...existingCodes, ...createdPOs.map((c) => c.poNo)]);
+      const poNo = nextCode(docPrefix('PO'), [...existingCodes, ...createdPOs.map((c) => c.poNo)]);
       const total = items.reduce((s, it) => s + it.qty * it.unitPrice, 0);
       createdPOs.push({
         id: `po-${Date.now()}-${supId}`,
+        companyId: activeCompany.id,
         poNo,
         prId: pr.id,
         prNo: pr.prNo,
@@ -112,27 +129,27 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
           Purchasing &amp; 4-Step Approval Workflow
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-          Prepared → Noted By → Recommending Approval → Approved. Purchase Orders can only be generated once Approved.
+          {activeCompany.name} ({activeCompany.code}) chain: Prepared → Noted By → Recommending Approval → Approved. POs generate once Approved.
         </p>
       </div>
 
       {/* Approval Chain Legend */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-        <div className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40">
-          <div className="font-bold text-[#123E82] dark:text-blue-300">1. Prepared By</div>
-          <div className="text-slate-600 dark:text-slate-400">Purchasing Officer (post-canvass)</div>
+        <div className="p-2.5 rounded-xl brand-soft-surface">
+          <div className="font-bold">1. Prepared By</div>
+          <div className="opacity-85">Purchasing Officer (post-canvass)</div>
         </div>
-        <div className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40">
-          <div className="font-bold text-[#123E82] dark:text-blue-300">2. Noted By</div>
-          <div className="text-slate-600 dark:text-slate-400">Project Engineer review</div>
+        <div className="p-2.5 rounded-xl brand-soft-surface">
+          <div className="font-bold">2. Noted By</div>
+          <div className="opacity-85">Project Engineer review</div>
         </div>
-        <div className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40">
-          <div className="font-bold text-[#123E82] dark:text-blue-300">3. Recommending Approval</div>
-          <div className="text-slate-600 dark:text-slate-400">Finance / Procurement Lead</div>
+        <div className="p-2.5 rounded-xl brand-soft-surface">
+          <div className="font-bold">3. Recommending Approval</div>
+          <div className="opacity-85">Finance / Procurement Lead</div>
         </div>
-        <div className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40">
-          <div className="font-bold text-[#123E82] dark:text-blue-300">4. Approved</div>
-          <div className="text-slate-600 dark:text-slate-400">General Manager / Head</div>
+        <div className="p-2.5 rounded-xl brand-soft-surface">
+          <div className="font-bold">4. Approved</div>
+          <div className="opacity-85">General Manager / Head</div>
         </div>
       </div>
 
@@ -147,7 +164,7 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-3">
-                    <span className="font-mono text-sm font-bold text-[#123E82] dark:text-blue-300">{pr.prNo}</span>
+                    <span className="font-mono text-sm font-bold brand-text-primary">{pr.prNo}</span>
                     <StatusText status={pr.status} />
                   </div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -165,25 +182,25 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
                     </div>
                   </div>
 
-                  {pr.status === 'Pending Note' && (
+                  {canApprove && pr.status === 'Pending Note' && (
                     <button
                       type="button"
                       onClick={() => advanceSignatory(pr)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-xl cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold brand-btn-primary rounded-xl cursor-pointer"
                     >
                       <Check className="w-3.5 h-3.5" /> Mark Noted
                     </button>
                   )}
-                  {pr.status === 'For Recommending Approval' && (
+                  {canApprove && pr.status === 'For Recommending Approval' && (
                     <button
                       type="button"
                       onClick={() => advanceSignatory(pr)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-xl cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold brand-btn-primary rounded-xl cursor-pointer"
                     >
                       <Check className="w-3.5 h-3.5" /> Recommending Approval
                     </button>
                   )}
-                  {pr.status === 'For Final Approval' && (
+                  {canApprove && pr.status === 'For Final Approval' && (
                     <button
                       type="button"
                       onClick={() => advanceSignatory(pr)}
@@ -192,9 +209,10 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
                       <Check className="w-3.5 h-3.5" /> Final Approve
                     </button>
                   )}
-                  {(pr.status === 'Pending Note' ||
-                    pr.status === 'For Recommending Approval' ||
-                    pr.status === 'For Final Approval') && (
+                  {canApprove &&
+                    (pr.status === 'Pending Note' ||
+                      pr.status === 'For Recommending Approval' ||
+                      pr.status === 'For Final Approval') && (
                     <button
                       type="button"
                       onClick={() => setRejectPrId(pr.id)}
@@ -204,11 +222,11 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
                     </button>
                   )}
 
-                  {pr.status === 'Approved' && (
+                  {canCreate && pr.status === 'Approved' && (
                     <button
                       type="button"
                       onClick={() => handleGeneratePO(pr)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-[#123E82] hover:bg-[#0E3168] rounded-xl cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold brand-btn-dark hover:opacity-90 rounded-xl cursor-pointer"
                     >
                       <FileCheck2 className="w-3.5 h-3.5" /> Generate PO
                     </button>
@@ -218,7 +236,7 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
                     <button
                       type="button"
                       onClick={() => onOpenPrint({ kind: 'pr', prId: pr.id })}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#123E82] dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-xl cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold brand-soft-surface hover:opacity-90 rounded-xl cursor-pointer"
                     >
                       <Printer className="w-3.5 h-3.5" /> Print Form
                     </button>
@@ -238,7 +256,7 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
                     key={step.label}
                     className={`p-2.5 rounded-xl border ${
                       step.stamp
-                        ? 'border-blue-200 dark:border-blue-900/70 bg-blue-50/40 dark:bg-blue-950/30'
+                        ? 'brand-soft-outline'
                         : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40'
                     }`}
                   >
@@ -258,7 +276,7 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
       </div>
 
       {/* Reject Reason Modal */}
-      {rejectPrId && (
+      {rejectPrId && canApprove && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
           <form onSubmit={handleReject} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md p-6 space-y-4">
             <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Reject Purchase Request</h3>

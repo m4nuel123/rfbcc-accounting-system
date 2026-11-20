@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
 import { Check, CheckCircle2, CreditCard, Plus, X, XCircle } from 'lucide-react';
-import { DisbursementVoucher, Employee, ERPState } from '../../types/erp';
+import { Company, DisbursementVoucher, Employee, ERPState, PermissionId } from '../../types/erp';
 import { formatPHP, nextCode, todayISO } from '../../utils/formatters';
 import { StatusText } from '../StatusText';
 
 interface VouchersModuleProps {
   state: ERPState;
   currentEmployee: Employee;
+  activeCompany: Company;
+  can: (perm: PermissionId) => boolean;
   onUpdateState: (updater: (prev: ERPState) => ERPState) => void;
 }
 
 export const VouchersModule: React.FC<VouchersModuleProps> = ({
   state,
   currentEmployee,
+  activeCompany,
+  can,
   onUpdateState,
 }) => {
   const [showCreate, setShowCreate] = useState(false);
@@ -30,12 +34,18 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
   const [payMethod, setPayMethod] = useState<'Check' | 'Bank Transfer' | 'Cash'>('Check');
   const [payRef, setPayRef] = useState('');
 
+  const canCreate = can('create_transactions');
+  const canApprove = can('approve_transactions');
+  const canPay = can('create_transactions') || can('edit_transactions');
+  const docPrefix = (code: string) => (activeCompany.code === 'RFB' ? code : `${activeCompany.code}-${code}`);
+
   // RRs that don't yet have an active (non-cancelled) DV
   const eligibleRRs = state.receivingReports.filter(
     (rr) => !state.vouchers.some((v) => v.rrId === rr.id && v.status !== 'Cancelled')
   );
 
   const openCreateModal = () => {
+    if (!canCreate) return;
     const first = eligibleRRs[0];
     setSelectedRrId(first?.id || '');
     setInvoiceAmount(first ? String(first.receivedAmount) : '');
@@ -45,6 +55,7 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
 
   const handleCreateDV = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canCreate) return;
     const rr = state.receivingReports.find((r) => r.id === selectedRrId);
     const po = rr ? state.purchaseOrders.find((p) => p.id === rr.poId) : undefined;
     if (!rr || !po) return;
@@ -52,13 +63,14 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
     const invAmt = Number(invoiceAmount) || rr.receivedAmount;
     const matched = Math.abs(po.totalAmount - rr.receivedAmount) < 0.01 && Math.abs(rr.receivedAmount - invAmt) < 0.01;
     const dvNo = nextCode(
-      'DV',
+      docPrefix('DV'),
       state.vouchers.map((v) => v.dvNo)
     );
     const pr = state.purchaseRequests.find((p) => p.id === po.prId);
 
     const newDV: DisbursementVoucher = {
       id: `dv-${Date.now()}`,
+      companyId: activeCompany.id,
       dvNo,
       poId: po.id,
       poNo: po.poNo,
@@ -88,6 +100,7 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
   };
 
   const handleApproveDV = (dvId: string) => {
+    if (!canApprove) return;
     onUpdateState((prev) => ({
       ...prev,
       vouchers: prev.vouchers.map((v) =>
@@ -104,6 +117,7 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
   };
 
   const handleCancelDV = (dvId: string) => {
+    if (!canApprove) return;
     onUpdateState((prev) => ({
       ...prev,
       vouchers: prev.vouchers.map((v) =>
@@ -114,15 +128,19 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
 
   const handleConfirmPayment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!payDv) return;
+    if (!canPay || !payDv) return;
     const ref = payRef.trim() || `CHK-${Math.floor(100000 + Math.random() * 899999)}`;
     const jeNo = nextCode(
-      'JE',
+      docPrefix('JE'),
       state.journalEntries.map((j) => j.jeNo)
     );
 
+    const acc2010 = state.accounts.find((a) => a.code === '2010')?.name || 'Accounts Payable - Suppliers';
+    const acc1010 = state.accounts.find((a) => a.code === '1010')?.name || 'Cash in Bank - Operating';
+
     const newJE = {
       id: `je-${Date.now()}`,
+      companyId: activeCompany.id,
       jeNo,
       date: todayISO(),
       reference: payDv.dvNo,
@@ -132,13 +150,13 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
       lines: [
         {
           accountCode: '2010',
-          accountName: 'Accounts Payable - Suppliers',
+          accountName: acc2010,
           debit: payDv.invoiceAmount,
           credit: 0,
         },
         {
           accountCode: '1010',
-          accountName: 'Cash in Bank - Operating',
+          accountName: acc1010,
           debit: 0,
           credit: payDv.invoiceAmount,
         },
@@ -170,19 +188,21 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
         <div>
           <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">Disbursement Vouchers (DV)</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            3-Way Match verification (PO + Receiving Report + Supplier Invoice), approval chain, and GL payment posting.
+            {activeCompany.name} ({activeCompany.code}) 3-Way Match verification (PO + RR + Invoice), approval chain, and GL payment posting.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={openCreateModal}
-          disabled={eligibleRRs.length === 0}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] disabled:opacity-40 rounded-xl shadow-xs cursor-pointer whitespace-nowrap shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          New Voucher (3-Way Match)
-        </button>
+        {canCreate && (
+          <button
+            type="button"
+            onClick={openCreateModal}
+            disabled={eligibleRRs.length === 0}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold brand-btn-primary disabled:opacity-40 rounded-xl shadow-xs cursor-pointer whitespace-nowrap shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            New Voucher (3-Way Match)
+          </button>
+        )}
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-xs">
@@ -202,7 +222,7 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {state.vouchers.map((dv) => (
               <tr key={dv.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300">{dv.dvNo}</td>
+                <td className="px-4 py-3 font-mono font-semibold brand-text-primary">{dv.dvNo}</td>
                 <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400">
                   {dv.poNo} · {dv.rrNo} · {dv.invoiceNo}
                 </td>
@@ -229,12 +249,12 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
                   )}
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap space-x-1.5">
-                  {dv.status === 'Pending Approval' && (
+                  {canApprove && dv.status === 'Pending Approval' && (
                     <>
                       <button
                         type="button"
                         onClick={() => handleApproveDV(dv.id)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer"
                       >
                         <Check className="w-3.5 h-3.5" /> Approve
                       </button>
@@ -247,7 +267,7 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
                       </button>
                     </>
                   )}
-                  {dv.status === 'Approved' && (
+                  {canPay && dv.status === 'Approved' && (
                     <button
                       type="button"
                       onClick={() => {
@@ -267,11 +287,13 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
       </div>
 
       {/* Create 3-Way Match Voucher Modal */}
-      {showCreate && (
+      {showCreate && canCreate && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-lg overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Create 3-Way Match Voucher</h3>
+              <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
+                Create {activeCompany.code} 3-Way Match Voucher
+              </h3>
               <button
                 type="button"
                 onClick={() => setShowCreate(false)}
@@ -342,7 +364,7 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer"
                 >
                   Create Voucher
                 </button>
@@ -353,7 +375,7 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
       )}
 
       {/* Mark Paid Modal */}
-      {payDv && (
+      {payDv && canPay && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
           <form onSubmit={handleConfirmPayment} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-6 space-y-4">
             <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">

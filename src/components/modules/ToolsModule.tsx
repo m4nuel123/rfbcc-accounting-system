@@ -11,13 +11,15 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
-import { BorrowRequest, Employee, ERPState, PrintDocument, ToolAsset } from '../../types/erp';
+import { BorrowRequest, Company, Employee, ERPState, PermissionId, PrintDocument, ToolAsset } from '../../types/erp';
 import { formatPHP, nextCode, nextSimpleCode, nowTimestamp, todayISO } from '../../utils/formatters';
 import { StatusText } from '../StatusText';
 
 interface ToolsModuleProps {
   state: ERPState;
   currentEmployee: Employee;
+  activeCompany: Company;
+  can: (perm: PermissionId) => boolean;
   onUpdateState: (updater: (prev: ERPState) => ERPState) => void;
   onOpenPrint: (doc: PrintDocument) => void;
 }
@@ -27,6 +29,8 @@ type ToolTab = 'requests' | 'registry' | 'repairs' | 'audit';
 export const ToolsModule: React.FC<ToolsModuleProps> = ({
   state,
   currentEmployee,
+  activeCompany,
+  can,
   onUpdateState,
   onOpenPrint,
 }) => {
@@ -64,6 +68,11 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
   const [disposeMethod, setDisposeMethod] = useState<'Scrap' | 'Auction' | 'Write-Off' | 'Donation'>('Scrap');
   const [salvageValue, setSalvageValue] = useState('0');
 
+  const canCreate = can('create_transactions');
+  const canEdit = can('edit_transactions') || canCreate;
+  const canApprove = can('approve_transactions');
+  const docPrefix = (code: string) => (activeCompany.code === 'RFB' ? code : `${activeCompany.code}-${code}`);
+
   const today = todayISO();
 
   const kpis = useMemo(() => {
@@ -86,6 +95,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
   ) => [
     {
       id: `tal-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      companyId: activeCompany.id,
       toolId: tool.id,
       assetCode: tool.assetCode,
       toolName: tool.name,
@@ -99,13 +109,14 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
 
   const handleRegisterTool = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!toolForm.name.trim()) return;
+    if (!canCreate || !toolForm.name.trim()) return;
     const assetCode = nextSimpleCode(
-      'RFB-TL-',
+      `${activeCompany.code}-TL-`,
       state.tools.map((t) => t.assetCode)
     );
     const newTool: ToolAsset = {
       id: `tl-${Date.now()}`,
+      companyId: activeCompany.id,
       assetCode,
       name: toolForm.name.trim(),
       category: toolForm.category,
@@ -113,7 +124,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
       serialNo: toolForm.serialNo.trim() || `SN-${Date.now().toString().slice(-6)}`,
       purchaseDate: todayISO(),
       purchaseCost: Number(toolForm.purchaseCost) || 0,
-      projectId: toolForm.projectId,
+      projectId: toolForm.projectId || state.projects[0]?.id || '',
       condition: 'Good',
       status: 'Available',
     };
@@ -121,7 +132,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
     onUpdateState((prev) => ({
       ...prev,
       tools: [newTool, ...prev.tools],
-      toolAuditLogs: appendAudit(prev, newTool, 'Asset Registered', `Added ${assetCode} to registry`),
+      toolAuditLogs: appendAudit(prev, newTool, 'Asset Registered', `Added ${assetCode} to ${activeCompany.code} registry`),
     }));
     setShowAddTool(false);
     setToolForm({ ...toolForm, name: '', brandModel: '', serialNo: '' });
@@ -129,14 +140,16 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
 
   const handleCreateBorrow = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canCreate) return;
     const tool = state.tools.find((t) => t.id === borrowForm.toolId);
     if (!tool) return;
     const trNo = nextCode(
-      'TR',
+      docPrefix('TR'),
       state.borrowRequests.map((b) => b.trNo)
     );
     const newReq: BorrowRequest = {
       id: `br-${Date.now()}`,
+      companyId: activeCompany.id,
       trNo,
       toolId: tool.id,
       toolAssetCode: tool.assetCode,
@@ -145,7 +158,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
       borrowerName: currentEmployee.name,
       borrowerPosition: currentEmployee.position,
       department: currentEmployee.department,
-      projectId: borrowForm.projectId,
+      projectId: borrowForm.projectId || state.projects[0]?.id || '',
       purpose: borrowForm.purpose.trim() || 'Site operations deployment',
       requestDate: todayISO(),
       expectedReturnDate: borrowForm.expectedReturnDate,
@@ -161,6 +174,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
   };
 
   const handleApproveBorrow = (br: BorrowRequest, approve: boolean) => {
+    if (!canApprove) return;
     onUpdateState((prev) => ({
       ...prev,
       borrowRequests: prev.borrowRequests.map((b) =>
@@ -183,6 +197,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
   };
 
   const handleReleaseBorrow = (br: BorrowRequest) => {
+    if (!canEdit) return;
     onUpdateState((prev) => ({
       ...prev,
       tools: prev.tools.map((t) => (t.id === br.toolId ? { ...t, status: 'Borrowed' } : t)),
@@ -219,7 +234,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
 
   const handleSubmitReturn = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!returnReq) return;
+    if (!canEdit || !returnReq) return;
     const isDamaged = returnCond !== 'Good';
 
     onUpdateState((prev) => ({
@@ -250,11 +265,12 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
         ? [
             {
               id: `rep-${Date.now()}`,
+              companyId: activeCompany.id,
               toolId: returnReq.toolId,
               assetCode: returnReq.toolAssetCode,
               toolName: returnReq.toolName,
               dateSent: todayISO(),
-              technician: 'RFB Motorpool Workshop',
+              technician: `${activeCompany.code} Motorpool Workshop`,
               issueDescription: `${returnCond}: ${returnRemarks || 'Reported upon return'}`,
               partsReplaced: 'Pending diagnostics',
               repairCost: 0,
@@ -277,6 +293,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
   };
 
   const handleReportLost = (tool: ToolAsset) => {
+    if (!canEdit) return;
     onUpdateState((prev) => ({
       ...prev,
       tools: prev.tools.map((t) => (t.id === tool.id ? { ...t, status: 'Lost' } : t)),
@@ -285,6 +302,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
   };
 
   const handleMarkRecovered = (tool: ToolAsset) => {
+    if (!canEdit) return;
     onUpdateState((prev) => ({
       ...prev,
       tools: prev.tools.map((t) => (t.id === tool.id ? { ...t, status: 'Available' } : t)),
@@ -293,6 +311,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
   };
 
   const handleCompleteRepair = (repId: string, toolId: string, cost: number) => {
+    if (!canEdit) return;
     const tool = state.tools.find((t) => t.id === toolId);
     onUpdateState((prev) => ({
       ...prev,
@@ -312,13 +331,14 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
 
   const handleConfirmDispose = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!disposeTool) return;
+    if (!canEdit || !disposeTool) return;
     onUpdateState((prev) => ({
       ...prev,
       tools: prev.tools.map((t) => (t.id === disposeTool.id ? { ...t, status: 'Disposed' } : t)),
       disposalRecords: [
         {
           id: `disp-${Date.now()}`,
+          companyId: activeCompany.id,
           toolId: disposeTool.id,
           assetCode: disposeTool.assetCode,
           toolName: disposeTool.name,
@@ -343,34 +363,39 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
         <div>
           <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">Tools &amp; Equipment Monitoring</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Asset registry, borrow/release/return lifecycle, damage &amp; repair tracking, audit trail, and printable Borrower Slips.
+            {activeCompany.name} ({activeCompany.code}) asset registry, borrow/release/return lifecycle, repair tracking, and printable Borrower Slips.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setBorrowForm({
-                toolId: availableTools[0]?.id || '',
-                projectId: state.projects[0]?.id || '',
-                expectedReturnDate: todayISO(),
-                purpose: '',
-              });
-              setShowBorrowModal(true);
-            }}
-            disabled={availableTools.length === 0}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] disabled:opacity-40 rounded-xl shadow-xs cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" /> Request Tool
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowAddTool(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#123E82] dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-xl cursor-pointer"
-          >
-            <Wrench className="w-3.5 h-3.5" /> Register Asset
-          </button>
-        </div>
+        {canCreate && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setBorrowForm({
+                  toolId: availableTools[0]?.id || '',
+                  projectId: state.projects[0]?.id || '',
+                  expectedReturnDate: todayISO(),
+                  purpose: '',
+                });
+                setShowBorrowModal(true);
+              }}
+              disabled={availableTools.length === 0}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold brand-btn-primary disabled:opacity-40 rounded-xl shadow-xs cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" /> Request Tool
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setToolForm({ ...toolForm, projectId: state.projects[0]?.id || '' });
+                setShowAddTool(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold brand-soft-surface hover:opacity-90 rounded-xl cursor-pointer"
+            >
+              <Wrench className="w-3.5 h-3.5" /> Register Asset
+            </button>
+          </div>
+        )}
       </div>
 
       {/* KPI Strip */}
@@ -378,7 +403,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
         {[
           { label: 'Total Tools', val: kpis.total, color: 'text-slate-900 dark:text-slate-100' },
           { label: 'Available', val: kpis.available, color: 'text-emerald-700 dark:text-emerald-400' },
-          { label: 'Borrowed', val: kpis.borrowed, color: 'text-[#2C6FE0] dark:text-blue-400' },
+          { label: 'Borrowed', val: kpis.borrowed, color: 'brand-text-accent' },
           { label: 'Under Repair', val: kpis.repair, color: 'text-amber-700 dark:text-amber-400' },
           { label: 'Lost / Stolen', val: kpis.lost, color: 'text-red-700 dark:text-red-400' },
           { label: 'Overdue Returns', val: kpis.overdue.length, color: 'text-red-700 dark:text-red-400' },
@@ -419,7 +444,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
             onClick={() => setTab(t.id)}
             className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
               tab === t.id
-                ? 'bg-white dark:bg-slate-900 text-[#123E82] dark:text-blue-300 shadow-xs'
+                ? 'bg-white dark:bg-slate-900 brand-text-primary shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
@@ -450,7 +475,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                 const isOverdue = br.status === 'Released' && br.expectedReturnDate < today;
                 return (
                   <tr key={br.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                    <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300">{br.trNo}</td>
+                    <td className="px-4 py-3 font-mono font-semibold brand-text-primary">{br.trNo}</td>
                     <td className="px-4 py-3">
                       <div className="font-semibold text-slate-900 dark:text-slate-100">{br.toolName}</div>
                       <div className="font-mono text-[11px] text-slate-400 dark:text-slate-500">{br.toolAssetCode}</div>
@@ -465,12 +490,12 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                     </td>
                     <td className="px-4 py-3"><StatusText status={br.status} /></td>
                     <td className="px-4 py-3 text-right whitespace-nowrap space-x-1.5">
-                      {br.status === 'Pending Approval' && (
+                      {canApprove && br.status === 'Pending Approval' && (
                         <>
                           <button
                             type="button"
                             onClick={() => handleApproveBorrow(br, true)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer"
                           >
                             <Check className="w-3.5 h-3.5" /> Approve
                           </button>
@@ -483,7 +508,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                           </button>
                         </>
                       )}
-                      {br.status === 'Approved' && (
+                      {canEdit && br.status === 'Approved' && (
                         <button
                           type="button"
                           onClick={() => handleReleaseBorrow(br)}
@@ -492,7 +517,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                           <PackageOpen className="w-3.5 h-3.5" /> Release Tool
                         </button>
                       )}
-                      {br.status === 'Released' && (
+                      {canEdit && br.status === 'Released' && (
                         <button
                           type="button"
                           onClick={() => {
@@ -500,7 +525,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                             setReturnCond('Good');
                             setReturnRemarks('');
                           }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-[#123E82] hover:bg-[#0D2E63] rounded-lg cursor-pointer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold brand-btn-dark hover:opacity-90 rounded-lg cursor-pointer"
                         >
                           <RotateCcw className="w-3.5 h-3.5" /> Process Return
                         </button>
@@ -509,7 +534,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                         <button
                           type="button"
                           onClick={() => onOpenPrint({ kind: 'borrower-slip', borrowId: br.id })}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#123E82] dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg cursor-pointer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold brand-soft-surface hover:opacity-90 rounded-lg cursor-pointer"
                         >
                           <Printer className="w-3.5 h-3.5" /> Print Slip
                         </button>
@@ -543,7 +568,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                 const proj = state.projects.find((p) => p.id === t.projectId);
                 return (
                   <tr key={t.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                    <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300">{t.assetCode}</td>
+                    <td className="px-4 py-3 font-mono font-semibold brand-text-primary">{t.assetCode}</td>
                     <td className="px-4 py-3">
                       <div className="font-semibold text-slate-900 dark:text-slate-100">{t.name}</div>
                       <div className="text-[11px] text-slate-500 dark:text-slate-400">{t.category}</div>
@@ -555,7 +580,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                     <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-900 dark:text-slate-100">{formatPHP(t.purchaseCost)}</td>
                     <td className="px-4 py-3"><StatusText status={t.status} /></td>
                     <td className="px-4 py-3 text-right whitespace-nowrap space-x-1.5">
-                      {(t.status === 'Available' || t.status === 'Borrowed') && (
+                      {canEdit && (t.status === 'Available' || t.status === 'Borrowed') && (
                         <button
                           type="button"
                           onClick={() => handleReportLost(t)}
@@ -564,7 +589,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                           Report Lost
                         </button>
                       )}
-                      {t.status === 'Lost' && (
+                      {canEdit && t.status === 'Lost' && (
                         <button
                           type="button"
                           onClick={() => handleMarkRecovered(t)}
@@ -573,7 +598,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                           Mark Recovered
                         </button>
                       )}
-                      {t.status !== 'Disposed' && (
+                      {canEdit && t.status !== 'Disposed' && (
                         <button
                           type="button"
                           onClick={() => setDisposeTool(t)}
@@ -599,31 +624,35 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
               <Hammer className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Repair Logs
             </div>
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {state.repairRecords.map((rep) => (
-                <div key={rep.id} className="p-4 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-[#123E82] dark:text-blue-300">
-                      {rep.assetCode} · {rep.toolName}
-                    </span>
-                    <StatusText status={rep.status} />
+              {state.repairRecords.length === 0 ? (
+                <div className="p-6 text-xs text-slate-500 dark:text-slate-400">No repair logs recorded for {activeCompany.code}.</div>
+              ) : (
+                state.repairRecords.map((rep) => (
+                  <div key={rep.id} className="p-4 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold brand-text-primary">
+                        {rep.assetCode} · {rep.toolName}
+                      </span>
+                      <StatusText status={rep.status} />
+                    </div>
+                    <div className="text-slate-600 dark:text-slate-300">{rep.issueDescription}</div>
+                    <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                      <span>
+                        {rep.technician} · Sent {rep.dateSent}
+                      </span>
+                      {canEdit && rep.status === 'In Progress' && (
+                        <button
+                          type="button"
+                          onClick={() => handleCompleteRepair(rep.id, rep.toolId, 2500)}
+                          className="px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg cursor-pointer"
+                        >
+                          Mark Repaired
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-slate-600 dark:text-slate-300">{rep.issueDescription}</div>
-                  <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-                    <span>
-                      {rep.technician} · Sent {rep.dateSent}
-                    </span>
-                    {rep.status === 'In Progress' && (
-                      <button
-                        type="button"
-                        onClick={() => handleCompleteRepair(rep.id, rep.toolId, 2500)}
-                        className="px-2.5 py-1 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg cursor-pointer"
-                      >
-                        Mark Repaired
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
@@ -672,7 +701,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
               {state.toolAuditLogs.map((log) => (
                 <tr key={log.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
                   <td className="px-4 py-2.5 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">{log.timestamp}</td>
-                  <td className="px-4 py-2.5 font-mono font-semibold text-[#123E82] dark:text-blue-300">{log.assetCode}</td>
+                  <td className="px-4 py-2.5 font-mono font-semibold brand-text-primary">{log.assetCode}</td>
                   <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-slate-100">{log.toolName}</td>
                   <td className="px-4 py-2.5 font-semibold text-slate-800 dark:text-slate-200">{log.action}</td>
                   <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">{log.actor}</td>
@@ -685,11 +714,13 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
       )}
 
       {/* Register Tool Modal */}
-      {showAddTool && (
+      {showAddTool && canCreate && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 flex items-center justify-center p-4">
           <form onSubmit={handleRegisterTool} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Register New Tool / Equipment</h3>
+              <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
+                Register New {activeCompany.code} Tool / Equipment
+              </h3>
               <button type="button" onClick={() => setShowAddTool(false)} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
@@ -749,7 +780,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
               <button type="button" onClick={() => setShowAddTool(false)} className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer">
                 Cancel
               </button>
-              <button type="submit" className="px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer">
+              <button type="submit" className="px-4 py-2 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer">
                 Save Asset
               </button>
             </div>
@@ -758,7 +789,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
       )}
 
       {/* Borrow Request Modal */}
-      {showBorrowModal && (
+      {showBorrowModal && canCreate && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 flex items-center justify-center p-4">
           <form onSubmit={handleCreateBorrow} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-6 space-y-4">
             <div className="flex items-center justify-between">
@@ -822,7 +853,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
               <button type="button" onClick={() => setShowBorrowModal(false)} className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer">
                 Cancel
               </button>
-              <button type="submit" className="px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer">
+              <button type="submit" className="px-4 py-2 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer">
                 Submit Borrow Request
               </button>
             </div>
@@ -831,7 +862,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
       )}
 
       {/* Return & Damage Inspection Modal */}
-      {returnReq && (
+      {returnReq && canEdit && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 flex items-center justify-center p-4">
           <form onSubmit={handleSubmitReturn} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-6 space-y-4">
             <div className="flex items-center justify-between">
@@ -878,7 +909,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
               <button type="button" onClick={() => setReturnReq(null)} className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer">
                 Cancel
               </button>
-              <button type="submit" className="px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer">
+              <button type="submit" className="px-4 py-2 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer">
                 Complete Return
               </button>
             </div>
@@ -887,7 +918,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
       )}
 
       {/* Disposal Modal */}
-      {disposeTool && (
+      {disposeTool && canEdit && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 dark:bg-black/70 flex items-center justify-center p-4">
           <form onSubmit={handleConfirmDispose} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-6 space-y-4">
             <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Dispose Asset · {disposeTool.assetCode}</h3>

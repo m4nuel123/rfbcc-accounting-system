@@ -1,22 +1,28 @@
 import React from 'react';
+import { Company } from '../types/erp';
 
 interface RfbLogoProps {
+  company?: Company;
   size?: 'sm' | 'md' | 'lg';
   showText?: boolean;
   align?: 'left' | 'right';
 }
 
 export const RfbLogo: React.FC<RfbLogoProps> = ({
+  company,
   size = 'md',
   showText = true,
   align = 'left',
 }) => {
   const dim = size === 'sm' ? 36 : size === 'lg' ? 52 : 40;
+  const logoUrl = company?.logoUrl || '/assets/aistudio/rfb-logo.png';
+  const name = company?.name || 'RFB Construction';
+  const code = company?.code || 'RFB';
 
   const mark = (
     <img
-      src="/assets/aistudio/rfb-logo.png"
-      alt="RFB Construction Emblem"
+      src={logoUrl}
+      alt={`${name} Emblem`}
       width={dim}
       height={dim}
       style={{ width: dim, height: dim }}
@@ -34,9 +40,15 @@ export const RfbLogo: React.FC<RfbLogoProps> = ({
       }`}
     >
       {mark}
-      <div className="leading-tight">
-        <div className="font-display font-bold text-[#123E82] dark:text-blue-300 tracking-tight text-base whitespace-nowrap">
-          RFB Construction
+      <div className="leading-tight min-w-0">
+        <div
+          className={`font-display font-bold tracking-tight text-base whitespace-nowrap truncate ${
+            code === 'RBI'
+              ? 'text-[#113E2B] dark:text-emerald-300'
+              : 'text-[#123E82] dark:text-blue-300'
+          }`}
+        >
+          {name}
         </div>
         <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
           Butuan City · ERP &amp; BI

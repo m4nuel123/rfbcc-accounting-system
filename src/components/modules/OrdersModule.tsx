@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
 import { PackageCheck, Truck, X } from 'lucide-react';
-import { Employee, ERPState, PurchaseOrder } from '../../types/erp';
+import { Company, Employee, ERPState, PermissionId, PurchaseOrder } from '../../types/erp';
 import { formatPHP, nextCode, todayISO } from '../../utils/formatters';
 import { StatusText } from '../StatusText';
 
 interface OrdersModuleProps {
   state: ERPState;
   currentEmployee: Employee;
+  activeCompany: Company;
+  can: (perm: PermissionId) => boolean;
   onUpdateState: (updater: (prev: ERPState) => ERPState) => void;
 }
 
 export const OrdersModule: React.FC<OrdersModuleProps> = ({
   state,
   currentEmployee,
+  activeCompany,
+  can,
   onUpdateState,
 }) => {
   const [receivePo, setReceivePo] = useState<PurchaseOrder | null>(null);
@@ -20,7 +24,11 @@ export const OrdersModule: React.FC<OrdersModuleProps> = ({
   const [drNo, setDrNo] = useState('');
   const [notes, setNotes] = useState('All items inspected and verified complete');
 
+  const canReceive = can('create_transactions') || can('edit_transactions');
+  const docPrefix = (code: string) => (activeCompany.code === 'RFB' ? code : `${activeCompany.code}-${code}`);
+
   const openReceive = (po: PurchaseOrder) => {
+    if (!canReceive) return;
     setReceivePo(po);
     setInvoiceNo(`SI-${Math.floor(10000 + Math.random() * 89999)}`);
     setDrNo(`DR-${Math.floor(1000 + Math.random() * 8999)}`);
@@ -29,19 +37,23 @@ export const OrdersModule: React.FC<OrdersModuleProps> = ({
 
   const handleConfirmReceive = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!receivePo) return;
+    if (!canReceive || !receivePo) return;
 
     const rrNo = nextCode(
-      'RR',
+      docPrefix('RR'),
       state.receivingReports.map((r) => r.rrNo)
     );
     const jeNo = nextCode(
-      'JE',
+      docPrefix('JE'),
       state.journalEntries.map((j) => j.jeNo)
     );
 
+    const acc5010 = state.accounts.find((a) => a.code === '5010')?.name || 'Direct Project Materials Cost';
+    const acc2010 = state.accounts.find((a) => a.code === '2010')?.name || 'Accounts Payable - Suppliers';
+
     const newRR = {
       id: `rr-${Date.now()}`,
+      companyId: activeCompany.id,
       rrNo,
       poId: receivePo.id,
       poNo: receivePo.poNo,
@@ -58,6 +70,7 @@ export const OrdersModule: React.FC<OrdersModuleProps> = ({
 
     const newJE = {
       id: `je-${Date.now()}`,
+      companyId: activeCompany.id,
       jeNo,
       date: todayISO(),
       reference: rrNo,
@@ -67,13 +80,13 @@ export const OrdersModule: React.FC<OrdersModuleProps> = ({
       lines: [
         {
           accountCode: '5010',
-          accountName: 'Direct Project Materials Cost',
+          accountName: acc5010,
           debit: receivePo.totalAmount,
           credit: 0,
         },
         {
           accountCode: '2010',
-          accountName: 'Accounts Payable - Suppliers',
+          accountName: acc2010,
           debit: 0,
           credit: receivePo.totalAmount,
         },
@@ -97,14 +110,14 @@ export const OrdersModule: React.FC<OrdersModuleProps> = ({
       <div>
         <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">Purchase Orders &amp; Receiving</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-          Track issued POs, record physical deliveries (RR), and auto-post material accruals to the General Ledger.
+          {activeCompany.name} ({activeCompany.code}) PO tracking, physical delivery receiving (RR), and automatic GL accrual posting.
         </p>
       </div>
 
       {/* Purchase Orders Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-xs">
         <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
-          <Truck className="w-4 h-4 text-[#2C6FE0] dark:text-blue-400" />
+          <Truck className="w-4 h-4 brand-text-accent" />
           Purchase Orders
         </div>
         <table className="w-full text-xs min-w-[760px]">
@@ -124,7 +137,7 @@ export const OrdersModule: React.FC<OrdersModuleProps> = ({
               const proj = state.projects.find((p) => p.id === po.projectId);
               return (
                 <tr key={po.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                  <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300">{po.poNo}</td>
+                  <td className="px-4 py-3 font-mono font-semibold brand-text-primary">{po.poNo}</td>
                   <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400">{po.prNo}</td>
                   <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{po.supplierName}</td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{proj?.name || po.projectId}</td>
@@ -133,11 +146,11 @@ export const OrdersModule: React.FC<OrdersModuleProps> = ({
                   </td>
                   <td className="px-4 py-3"><StatusText status={po.status} /></td>
                   <td className="px-4 py-3 text-right">
-                    {po.status === 'Issued' && (
+                    {canReceive && po.status === 'Issued' && (
                       <button
                         type="button"
                         onClick={() => openReceive(po)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer"
                       >
                         <PackageCheck className="w-3.5 h-3.5" />
                         Receive Delivery
@@ -170,7 +183,7 @@ export const OrdersModule: React.FC<OrdersModuleProps> = ({
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {state.receivingReports.map((rr) => (
               <tr key={rr.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300">{rr.rrNo}</td>
+                <td className="px-4 py-3 font-mono font-semibold brand-text-primary">{rr.rrNo}</td>
                 <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400">{rr.poNo}</td>
                 <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400">
                   {rr.deliveryReceiptNo} / {rr.invoiceNo}
@@ -189,7 +202,7 @@ export const OrdersModule: React.FC<OrdersModuleProps> = ({
       </div>
 
       {/* Receive Delivery Modal */}
-      {receivePo && (
+      {receivePo && canReceive && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
@@ -239,8 +252,8 @@ export const OrdersModule: React.FC<OrdersModuleProps> = ({
                   className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 />
               </div>
-              <div className="bg-blue-50/70 dark:bg-blue-950/50 rounded-xl p-3 text-xs text-[#123E82] dark:text-blue-300 flex justify-between">
-                <span>Accrual to post to GL:</span>
+              <div className="brand-soft-surface rounded-xl p-3 text-xs flex justify-between">
+                <span>Accrual to post to {activeCompany.code} GL:</span>
                 <span className="font-mono font-bold">{formatPHP(receivePo.totalAmount)}</span>
               </div>
               <div className="flex justify-end gap-2">
@@ -253,7 +266,7 @@ export const OrdersModule: React.FC<OrdersModuleProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer"
                 >
                   Confirm Receipt &amp; Post GL
                 </button>

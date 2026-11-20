@@ -1,12 +1,23 @@
 import React, { useState } from 'react';
 import { Award, FileSpreadsheet, Plus, Printer, X } from 'lucide-react';
-import { Canvass, CanvassQuote, Employee, ERPState, PrintDocument, PurchaseRequestItem } from '../../types/erp';
+import {
+  Canvass,
+  CanvassQuote,
+  Company,
+  Employee,
+  ERPState,
+  PermissionId,
+  PrintDocument,
+  PurchaseRequestItem,
+} from '../../types/erp';
 import { formatPHP, nextCode, todayISO } from '../../utils/formatters';
 import { StatusText } from '../StatusText';
 
 interface CanvassingModuleProps {
   state: ERPState;
   currentEmployee: Employee;
+  activeCompany: Company;
+  can: (perm: PermissionId) => boolean;
   onUpdateState: (updater: (prev: ERPState) => ERPState) => void;
   onOpenPrint: (doc: PrintDocument) => void;
 }
@@ -14,6 +25,8 @@ interface CanvassingModuleProps {
 export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
   state,
   currentEmployee,
+  activeCompany,
+  can,
   onUpdateState,
   onOpenPrint,
 }) => {
@@ -27,6 +40,11 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
   // Nested "+ Add New Supplier..." modal
   const [showAddSupplier, setShowAddSupplier] = useState(false);
   const [newSupForm, setNewSupForm] = useState({ name: '', contact: '', terms: 'Net 30', category: 'Construction' });
+
+  const canCreate = can('create_transactions');
+  const canEdit = can('edit_transactions');
+  const canModifyQuotes = canCreate || canEdit;
+  const docPrefix = (code: string) => (activeCompany.code === 'RFB' ? code : `${activeCompany.code}-${code}`);
 
   const activeCanvass = state.canvasses.find((c) => c.id === activeCanvassId) || null;
   const activeReq = activeCanvass
@@ -43,6 +61,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
 
   const handleSupplierChange = (val: string) => {
     if (val === '__ADD_NEW__') {
+      if (!canCreate) return;
       setShowAddSupplier(true);
       return;
     }
@@ -51,7 +70,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
 
   const handleSaveNewSupplier = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSupForm.name.trim()) return;
+    if (!canCreate || !newSupForm.name.trim()) return;
     const newId = `sup-${Date.now()}`;
     onUpdateState((prev) => ({
       ...prev,
@@ -59,9 +78,10 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
         ...prev.suppliers,
         {
           id: newId,
+          companyId: activeCompany.id,
           name: newSupForm.name.trim(),
           contact: newSupForm.contact.trim() || '0917-000-0000',
-          address: 'Bukidnon',
+          address: activeCompany.address,
           terms: newSupForm.terms.trim() || 'Net 30',
           category: newSupForm.category,
           rating: 4.5,
@@ -75,7 +95,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
 
   const handleAddQuote = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeCanvass || !quoteSupplierId || !quoteMaterialId) return;
+    if (!canModifyQuotes || !activeCanvass || !quoteSupplierId || !quoteMaterialId) return;
     const sup = state.suppliers.find((s) => s.id === quoteSupplierId);
     const price = Number(quotePrice);
     if (!sup || !Number.isFinite(price) || price <= 0) return;
@@ -100,6 +120,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
   };
 
   const handlePickWinner = (canvassId: string, materialId: string, quoteId: string) => {
+    if (!canModifyQuotes) return;
     onUpdateState((prev) => ({
       ...prev,
       canvasses: prev.canvasses.map((c) =>
@@ -116,10 +137,10 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
   };
 
   const handleAutoAwardAndCreatePR = (cnv: Canvass) => {
+    if (!canCreate) return;
     const req = state.requisitions.find((r) => r.id === cnv.reqId);
     if (!req) return;
 
-    // Ensure each req item has a winner (pick lowest quote if not manually picked)
     const prItems: PurchaseRequestItem[] = [];
     let estTotal = 0;
     let awardedTotal = 0;
@@ -144,7 +165,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
     }
 
     const prNo = nextCode(
-      'PR',
+      docPrefix('PR'),
       state.purchaseRequests.map((p) => p.prNo)
     );
 
@@ -159,6 +180,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
       purchaseRequests: [
         {
           id: `pr-${Date.now()}`,
+          companyId: activeCompany.id,
           prNo,
           canvassId: cnv.id,
           canvassNo: cnv.canvassNo,
@@ -189,7 +211,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
       <div>
         <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">Supplier Canvassing</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-          Compare supplier quotations per item, add new accredited suppliers on the fly, and award winners to generate Purchase Requests.
+          {activeCompany.name} ({activeCompany.code}) supplier quotations comparison, dynamic supplier onboarding, and PR generation.
         </p>
       </div>
 
@@ -211,7 +233,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
               const proj = state.projects.find((p) => p.id === cnv.projectId);
               return (
                 <tr key={cnv.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                  <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300">{cnv.canvassNo}</td>
+                  <td className="px-4 py-3 font-mono font-semibold brand-text-primary">{cnv.canvassNo}</td>
                   <td className="px-4 py-3 font-mono text-slate-700 dark:text-slate-300">{cnv.reqNo}</td>
                   <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{proj?.name || cnv.projectId}</td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{cnv.category}</td>
@@ -228,10 +250,10 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
                     <button
                       type="button"
                       onClick={() => openCanvassModal(cnv)}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer"
                     >
                       <FileSpreadsheet className="w-3.5 h-3.5" />
-                      {cnv.status === 'Open' ? 'Encode Quotes' : 'View Abstract'}
+                      {cnv.status === 'Open' && canModifyQuotes ? 'Encode Quotes' : 'View Abstract'}
                     </button>
                   </td>
                 </tr>
@@ -264,8 +286,8 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
             </div>
 
             <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
-              {activeCanvass.status === 'Open' && (
-                <form onSubmit={handleAddQuote} className="bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/60 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+              {activeCanvass.status === 'Open' && canModifyQuotes && (
+                <form onSubmit={handleAddQuote} className="brand-soft-surface border border-slate-200/80 dark:border-slate-700 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                   <div className="sm:col-span-4">
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Supplier</label>
                     <select
@@ -278,9 +300,11 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
                           {s.name}
                         </option>
                       ))}
-                      <option value="__ADD_NEW__" className="font-bold text-[#123E82] dark:text-blue-300">
-                        + Add New Supplier…
-                      </option>
+                      {canCreate && (
+                        <option value="__ADD_NEW__" className="font-bold">
+                          + Add New Supplier…
+                        </option>
+                      )}
                     </select>
                   </div>
 
@@ -337,7 +361,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
                   <div className="sm:col-span-2">
                     <button
                       type="submit"
-                      className="w-full inline-flex items-center justify-center gap-1 px-3 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer"
+                      className="w-full inline-flex items-center justify-center gap-1 px-3 py-2 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" /> Add Quote
                     </button>
@@ -400,7 +424,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
                                   </td>
                                   <td className="px-4 py-2.5 text-center font-mono text-slate-700 dark:text-slate-300">{q.leadTimeDays}d</td>
                                   <td className="px-4 py-2.5 text-right">
-                                    {activeCanvass.status === 'Open' ? (
+                                    {activeCanvass.status === 'Open' && canModifyQuotes ? (
                                       <button
                                         type="button"
                                         onClick={() => handlePickWinner(activeCanvass.id, rItem.materialId, q.id)}
@@ -429,7 +453,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
                 })}
               </div>
 
-              {activeCanvass.status === 'Open' && (
+              {activeCanvass.status === 'Open' && canCreate && (
                 <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
                   <span className="text-xs text-slate-500 dark:text-slate-400">
                     Each requested item requires at least 1 quote before generating Purchase Request.
@@ -440,7 +464,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
                       (it) => !activeCanvass.quotes.some((q) => q.materialId === it.materialId)
                     )}
                     onClick={() => handleAutoAwardAndCreatePR(activeCanvass)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] disabled:opacity-40 rounded-lg cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold brand-btn-primary disabled:opacity-40 rounded-lg cursor-pointer"
                   >
                     <Award className="w-4 h-4" />
                     Award Winners &amp; Generate PR
@@ -453,11 +477,11 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
       )}
 
       {/* Nested Modal: + Add New Supplier */}
-      {showAddSupplier && (
+      {showAddSupplier && canCreate && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
-              <h4 className="font-display text-sm font-bold text-[#123E82] dark:text-blue-300">+ Add New Supplier</h4>
+              <h4 className="font-display text-sm font-bold brand-text-primary">+ Add New {activeCompany.code} Supplier</h4>
               <button
                 type="button"
                 onClick={() => setShowAddSupplier(false)}
@@ -509,7 +533,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer"
                 >
                   Save &amp; Select Supplier
                 </button>

@@ -1,16 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle, FileCheck, Printer, Search } from 'lucide-react';
-import { ERPState, ItemGroup, PrintDocument } from '../../types/erp';
+import { Company, ERPState, ItemGroup, PrintDocument } from '../../types/erp';
 import { findDuplicateRequisitions } from '../../utils/formatters';
 import { StatusText } from '../StatusText';
 
 interface DocumentTrackerModuleProps {
   state: ERPState;
+  activeCompany: Company;
   onOpenPrint: (doc: PrintDocument) => void;
 }
 
 export const DocumentTrackerModule: React.FC<DocumentTrackerModuleProps> = ({
   state,
+  activeCompany,
   onOpenPrint,
 }) => {
   const [search, setSearch] = useState('');
@@ -81,7 +83,7 @@ export const DocumentTrackerModule: React.FC<DocumentTrackerModuleProps> = ({
       <div>
         <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">Document Tracker (Electronic Logbook)</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-          Unified tracking log of all Requisitions &amp; Canvass transactions across Construction, ICT, and Office Supplies. Print routing slips for physical receiver signature.
+          {activeCompany.name} ({activeCompany.code}) unified tracking log of Requisitions &amp; Canvass transactions. Print routing slips for receiver sign-off.
         </p>
       </div>
 
@@ -92,7 +94,7 @@ export const DocumentTrackerModule: React.FC<DocumentTrackerModuleProps> = ({
             <div className="text-xs text-slate-500 dark:text-slate-400">Total Logged Transactions</div>
             <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 tabular-nums">{records.length}</div>
           </div>
-          <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/60 text-[#2C6FE0] dark:text-blue-400 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full brand-soft-surface flex items-center justify-center">
             <FileCheck className="w-5 h-5" />
           </div>
         </div>
@@ -184,7 +186,7 @@ export const DocumentTrackerModule: React.FC<DocumentTrackerModuleProps> = ({
               const proj = state.projects.find((p) => p.id === rec.projectId);
               return (
                 <tr key={`${rec.docType}-${rec.id}`} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                  <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300 whitespace-nowrap">
+                  <td className="px-4 py-3 font-mono font-semibold brand-text-primary whitespace-nowrap">
                     {rec.trackingNo}
                     {rec.possibleDuplicate && (
                       <span className="ml-2 text-[10px] font-sans font-bold text-amber-700 dark:text-amber-400">
@@ -204,7 +206,7 @@ export const DocumentTrackerModule: React.FC<DocumentTrackerModuleProps> = ({
                       onClick={() =>
                         onOpenPrint({ kind: 'doc-slip', docType: rec.docType, refId: rec.id })
                       }
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-[#123E82] dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg cursor-pointer"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold brand-soft-surface hover:opacity-90 rounded-lg cursor-pointer"
                     >
                       <Printer className="w-3.5 h-3.5" /> Slip
                     </button>

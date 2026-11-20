@@ -11,12 +11,47 @@ export type ModuleId =
   | 'reports'
   | 'masterData';
 
+export type PermissionId =
+  | 'view_dashboard'
+  | 'view_transactions'
+  | 'create_transactions'
+  | 'edit_transactions'
+  | 'delete_transactions'
+  | 'approve_transactions'
+  | 'generate_reports'
+  | 'export_reports'
+  | 'manage_users'
+  | 'manage_companies';
+
+export interface Company {
+  id: string;
+  code: string;
+  name: string;
+  legalName: string;
+  tagline: string;
+  address: string;
+  tin: string;
+  email: string;
+  logoUrl: string;
+  themePrimary: string;
+  themeAccent: string;
+  isActive: boolean;
+}
+
+export interface UserCompanyAccess {
+  companyId: string;
+  roleLabel: string;
+  allowedModules: ModuleId[];
+  permissions: PermissionId[];
+}
+
 export type ProjectType = 'Road' | 'Bridge' | 'Building' | 'Administrative';
 
 export type ItemGroup = 'Construction Materials' | 'ICT Equipment' | 'General Supplies';
 
 export interface Project {
   id: string;
+  companyId: string;
   code: string;
   name: string;
   type: ProjectType;
@@ -29,6 +64,7 @@ export interface Project {
 
 export interface Supplier {
   id: string;
+  companyId: string;
   name: string;
   contact: string;
   address: string;
@@ -39,6 +75,7 @@ export interface Supplier {
 
 export interface Material {
   id: string;
+  companyId: string;
   code: string;
   name: string;
   group: ItemGroup;
@@ -49,6 +86,7 @@ export interface Material {
 
 export interface Employee {
   id: string;
+  companyId: string;
   name: string;
   position: string;
   department: string;
@@ -64,6 +102,17 @@ export interface UserAccount {
   roleLabel: string;
   isAdmin: boolean;
   allowedModules: ModuleId[];
+  companyAccess: UserCompanyAccess[];
+}
+
+export interface SafeUserAccount {
+  id: string;
+  username: string;
+  employeeId: string;
+  roleLabel: string;
+  isAdmin: boolean;
+  allowedModules: ModuleId[];
+  companyAccess: UserCompanyAccess[];
 }
 
 export interface RequisitionItem {
@@ -78,6 +127,7 @@ export type RequisitionStatus = 'Draft' | 'For Canvassing' | 'Canvassed' | 'PR G
 
 export interface Requisition {
   id: string;
+  companyId: string;
   reqNo: string;
   projectId: string;
   department: string;
@@ -105,6 +155,7 @@ export type CanvassStatus = 'Open' | 'Awarded' | 'PR Created';
 
 export interface Canvass {
   id: string;
+  companyId: string;
   canvassNo: string;
   reqId: string;
   reqNo: string;
@@ -143,6 +194,7 @@ export interface SignatoryStamp {
 
 export interface PurchaseRequest {
   id: string;
+  companyId: string;
   prNo: string;
   canvassId: string;
   canvassNo: string;
@@ -165,6 +217,7 @@ export type POStatus = 'Issued' | 'Partially Delivered' | 'Delivered' | 'Cancell
 
 export interface PurchaseOrder {
   id: string;
+  companyId: string;
   poNo: string;
   prId: string;
   prNo: string;
@@ -180,6 +233,7 @@ export interface PurchaseOrder {
 
 export interface ReceivingReport {
   id: string;
+  companyId: string;
   rrNo: string;
   poId: string;
   poNo: string;
@@ -198,6 +252,7 @@ export type VoucherStatus = 'Pending Approval' | 'Approved' | 'Paid' | 'Cancelle
 
 export interface DisbursementVoucher {
   id: string;
+  companyId: string;
   dvNo: string;
   poId: string;
   poNo: string;
@@ -225,6 +280,7 @@ export interface DisbursementVoucher {
 }
 
 export interface Account {
+  companyId: string;
   code: string;
   name: string;
   type: 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense';
@@ -240,6 +296,7 @@ export interface JournalLine {
 
 export interface JournalEntry {
   id: string;
+  companyId: string;
   jeNo: string;
   date: string;
   reference: string;
@@ -253,6 +310,7 @@ export type ToolStatus = 'Available' | 'Borrowed' | 'Under Repair' | 'Disposed' 
 
 export interface ToolAsset {
   id: string;
+  companyId: string;
   assetCode: string;
   name: string;
   category: string;
@@ -269,6 +327,7 @@ export type BorrowStatus = 'Pending Approval' | 'Approved' | 'Rejected' | 'Relea
 
 export interface BorrowRequest {
   id: string;
+  companyId: string;
   trNo: string;
   toolId: string;
   toolAssetCode: string;
@@ -297,6 +356,7 @@ export interface BorrowRequest {
 
 export interface ToolAuditLog {
   id: string;
+  companyId: string;
   toolId: string;
   assetCode: string;
   toolName: string;
@@ -308,6 +368,7 @@ export interface ToolAuditLog {
 
 export interface ToolRepairRecord {
   id: string;
+  companyId: string;
   toolId: string;
   assetCode: string;
   toolName: string;
@@ -322,6 +383,7 @@ export interface ToolRepairRecord {
 
 export interface ToolDisposalRecord {
   id: string;
+  companyId: string;
   toolId: string;
   assetCode: string;
   toolName: string;
@@ -332,7 +394,23 @@ export interface ToolDisposalRecord {
   approvedBy: string;
 }
 
+export interface AuditLogEntry {
+  id: string;
+  userId: string;
+  username: string;
+  userName: string;
+  companyId: string;
+  companyCode: string;
+  companyName: string;
+  action: string;
+  module: ModuleId | 'auth' | 'company';
+  targetId?: string;
+  details: string;
+  timestamp: string;
+}
+
 export interface ERPState {
+  companies: Company[];
   projects: Project[];
   suppliers: Supplier[];
   materials: Material[];
@@ -351,6 +429,22 @@ export interface ERPState {
   toolAuditLogs: ToolAuditLog[];
   repairRecords: ToolRepairRecord[];
   disposalRecords: ToolDisposalRecord[];
+  auditLogs: AuditLogEntry[];
+}
+
+export interface LoginResponse {
+  token: string;
+  user: SafeUserAccount;
+  availableCompanies: Company[];
+  employee: Employee | null;
+}
+
+export interface SelectCompanyResponse {
+  token?: string;
+  activeCompany: Company;
+  activeAccess: UserCompanyAccess;
+  employee: Employee | null;
+  state: ERPState;
 }
 
 export type PrintDocument =

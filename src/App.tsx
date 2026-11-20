@@ -1,13 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertTriangle,
+  ArrowLeftRight,
   Bell,
   BookOpen,
+  Building2,
+  Check,
+  ChevronDown,
   ClipboardList,
   Database,
   FileBarChart2,
   FileCheck,
   FileSpreadsheet,
   LayoutDashboard,
+  Lock,
   LogOut,
   Menu,
   Moon,
@@ -19,6 +25,7 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
+import { CompanySelectScreen } from './components/CompanySelectScreen';
 import { LoginScreen } from './components/LoginScreen';
 import { PrintPreviewModal } from './components/PrintPreviewModal';
 import { RfbLogo } from './components/RfbLogo';
@@ -33,11 +40,20 @@ import { ReportsModule } from './components/modules/ReportsModule';
 import { RequisitionsModule } from './components/modules/RequisitionsModule';
 import { ToolsModule } from './components/modules/ToolsModule';
 import { VouchersModule } from './components/modules/VouchersModule';
-import { INITIAL_ERP_STATE } from './utils/erpConfig';
-import { ERPState, ModuleId, PrintDocument, UserAccount } from './types/erp';
+import {
+  Company,
+  Employee,
+  ERPState,
+  LoginResponse,
+  ModuleId,
+  PermissionId,
+  PrintDocument,
+  SafeUserAccount,
+  UserCompanyAccess,
+} from './types/erp';
+import { apiCommitState, apiLogout, apiSelectCompany } from './utils/apiClient';
 import { todayISO } from './utils/formatters';
 
-const STORAGE_KEY = 'rfb_construction_erp_v1';
 const THEME_STORAGE_KEY = 'rfb_theme';
 
 interface NavDef {
@@ -61,16 +77,6 @@ const NAV_ITEMS: NavDef[] = [
 ];
 
 export default function App() {
-  const [state, setState] = useState<ERPState>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved) as ERPState;
-    } catch {
-      // ignore storage errors
-    }
-    return INITIAL_ERP_STATE;
-  });
-
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     try {
       const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
@@ -82,6 +88,29 @@ export default function App() {
     }
   });
 
+  // Centralized Auth & Multi-Company Session State (in memory for strict security)
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<SafeUserAccount | null>(null);
+  const [availableCompanies, setAvailableCompanies] = useState<Company[]>([]);
+  const [activeCompany, setActiveCompany] = useState<Company | null>(null);
+  const [activeAccess, setActiveAccess] = useState<UserCompanyAccess | null>(null);
+  const [sessionEmployee, setSessionEmployee] = useState<Employee | null>(null);
+  const [state, setState] = useState<ERPState | null>(null);
+
+  const stateRef = useRef<ERPState | null>(null);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  const [activeModule, setActiveModule] = useState<ModuleId>('dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [printDoc, setPrintDoc] = useState<PrintDocument | null>(null);
+  const [globalQuery, setGlobalQuery] = useState('');
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [showCompanyMenu, setShowCompanyMenu] = useState(false);
+  const [switchingCompany, setSwitchingCompany] = useState(false);
+  const [syncError, setSyncError] = useState('');
+
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
     try {
@@ -91,62 +120,199 @@ export default function App() {
     }
   }, [darkMode]);
 
+  useEffect(() => {
+    document.documentElement.dataset.company = activeCompany?.code === 'RBI' ? 'RBI' : 'RFB';
+  }, [activeCompany]);
+
   const toggleDarkMode = () => setDarkMode((prev) => !prev);
 
-  // Auth session intentionally lives only in memory (resets on reload for security)
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
-  const [activeModule, setActiveModule] = useState<ModuleId>('dashboard');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [printDoc, setPrintDoc] = useState<PrintDocument | null>(null);
+  const handleLoginSuccess = (payload: LoginResponse) => {
+    setAuthToken(payload.token);
+    setCurrentUser(payload.user);
+    setAvailableCompanies(payload.availableCompanies);
+    setSessionEmployee(payload.employee);
+    setActiveCompany(null);
+    setActiveAccess(null);
+    setState(null);
+    stateRef.current = null;
+    setSyncError('');
+  };
 
-  // Topbar search & notifications
-  const [globalQuery, setGlobalQuery] = useState('');
-  const [showNotifs, setShowNotifs] = useState(false);
+  const handleSelectCompany = useCallback(
+    async (companyId: string) => {
+      if (!authToken || !currentUser) return;
+      setSwitchingCompany(true);
+      setSyncError('');
+      setShowCompanyMenu(false);
+      setShowNotifs(false);
+      setGlobalQuery('');
+      setPrintDoc(null);
 
-  const updateState = (updater: (prev: ERPState) => ERPState) => {
-    setState((prev) => {
-      const next = updater(prev);
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // ignore quota issues
+        const res = await apiSelectCompany(authToken, companyId);
+        if (res.token) {
+          setAuthToken(res.token);
+        }
+        setActiveCompany(res.activeCompany);
+        setActiveAccess(res.activeAccess);
+        setSessionEmployee(res.employee);
+        setState(res.state);
+        stateRef.current = res.state;
+
+        // Refresh companies list from committed state if present
+        if (res.state.companies?.length) {
+          if (currentUser.isAdmin) {
+            setAvailableCompanies(res.state.companies.filter((c) => c.isActive));
+          } else {
+            const assignedIds = new Set(currentUser.companyAccess.map((ca) => ca.companyId));
+            setAvailableCompanies(
+              res.state.companies.filter((c) => c.isActive && assignedIds.has(c.id))
+            );
+          }
+        }
+
+        const nextAllowed = currentUser.isAdmin
+          ? NAV_ITEMS.map((n) => n.id)
+          : res.activeAccess.allowedModules;
+
+        setActiveModule((prev) => {
+          if (nextAllowed.includes(prev)) return prev;
+          if (nextAllowed.includes('dashboard')) return 'dashboard';
+          return nextAllowed[0] || 'requisitions';
+        });
+      } finally {
+        setSwitchingCompany(false);
       }
-      return next;
-    });
+    },
+    [authToken, currentUser]
+  );
+
+  const handleExitToCompanySelector = () => {
+    setActiveCompany(null);
+    setActiveAccess(null);
+    setState(null);
+    stateRef.current = null;
+    setShowCompanyMenu(false);
+    setShowNotifs(false);
+    setGlobalQuery('');
+    setPrintDoc(null);
+    setSyncError('');
   };
 
-  const allowedNavItems = useMemo(() => {
-    if (!currentUser) return [];
-    if (currentUser.isAdmin) return NAV_ITEMS;
-    return NAV_ITEMS.filter((n) => currentUser.allowedModules.includes(n.id));
-  }, [currentUser]);
-
-  const handleLogin = (user: UserAccount) => {
-    setCurrentUser(user);
-    const firstModule = user.isAdmin
-      ? 'dashboard'
-      : user.allowedModules[0] || 'requisitions';
-    setActiveModule(firstModule);
-  };
-
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (authToken) {
+      await apiLogout(authToken);
+    }
+    setAuthToken(null);
     setCurrentUser(null);
+    setAvailableCompanies([]);
+    setActiveCompany(null);
+    setActiveAccess(null);
+    setSessionEmployee(null);
+    setState(null);
+    stateRef.current = null;
     setGlobalQuery('');
     setShowNotifs(false);
+    setShowCompanyMenu(false);
+    setPrintDoc(null);
+    setSyncError('');
   };
 
-  const currentEmployee = useMemo(() => {
-    if (!currentUser) return state.employees[0];
-    return (
-      state.employees.find((e) => e.id === currentUser.employeeId) ||
-      state.employees[0]
-    );
-  }, [currentUser, state.employees]);
+  const updateState = useCallback(
+    (updater: (prev: ERPState) => ERPState) => {
+      const prevSnapshot = stateRef.current;
+      if (!prevSnapshot || !authToken) return;
 
-  // Real pending notifications scoped to user's accessible modules
+      const nextSnapshot = updater(prevSnapshot);
+      stateRef.current = nextSnapshot;
+      setState(nextSnapshot);
+      setSyncError('');
+
+      apiCommitState(authToken, nextSnapshot)
+        .then((res) => {
+          stateRef.current = res.state;
+          setState(res.state);
+
+          // Keep active company branding & switcher synced if companies/RBAC were edited
+          if (activeCompany && res.state.companies?.length) {
+            const updatedCurrent = res.state.companies.find((c) => c.id === activeCompany.id);
+            if (updatedCurrent) {
+              setActiveCompany(updatedCurrent);
+            }
+            if (currentUser) {
+              if (currentUser.isAdmin) {
+                setAvailableCompanies(res.state.companies.filter((c) => c.isActive));
+              } else {
+                const updatedSelf = res.state.users.find((u) => u.id === currentUser.id);
+                if (updatedSelf) {
+                  setCurrentUser(updatedSelf);
+                  const assignedIds = new Set(updatedSelf.companyAccess.map((ca) => ca.companyId));
+                  setAvailableCompanies(
+                    res.state.companies.filter((c) => c.isActive && assignedIds.has(c.id))
+                  );
+                }
+              }
+            }
+          }
+        })
+        .catch((err) => {
+          // Revert optimistic state on server rejection (e.g., 403 Forbidden or IDOR)
+          stateRef.current = prevSnapshot;
+          setState(prevSnapshot);
+          setSyncError(
+            err instanceof Error
+              ? err.message
+              : 'Server rejected this change due to company isolation or permission rules.'
+          );
+        });
+    },
+    [authToken, activeCompany, currentUser]
+  );
+
+  const can = useCallback(
+    (perm: PermissionId): boolean => {
+      if (!currentUser) return false;
+      if (currentUser.isAdmin) return true;
+      if (!activeAccess) return false;
+      return activeAccess.permissions.includes(perm);
+    },
+    [currentUser, activeAccess]
+  );
+
+  const allowedNavItems = useMemo(() => {
+    if (!currentUser || !activeAccess) return [];
+    if (currentUser.isAdmin) return NAV_ITEMS;
+    return NAV_ITEMS.filter((n) => activeAccess.allowedModules.includes(n.id));
+  }, [currentUser, activeAccess]);
+
+  const allowedModuleIds = useMemo(
+    () => allowedNavItems.map((n) => n.id),
+    [allowedNavItems]
+  );
+
+  const currentEmployee: Employee = useMemo(() => {
+    const companyId = activeCompany?.id || 'comp-rfb';
+    if (state && currentUser?.employeeId) {
+      const fromCompany = state.employees.find((e) => e.id === currentUser.employeeId);
+      if (fromCompany) return fromCompany;
+    }
+    if (sessionEmployee) return sessionEmployee;
+    if (state && state.employees.length > 0) return state.employees[0];
+    return {
+      id: currentUser?.employeeId || currentUser?.id || 'emp-system',
+      companyId,
+      name: currentUser?.username || 'Authorized User',
+      position: activeAccess?.roleLabel || currentUser?.roleLabel || 'Staff',
+      department: 'Operations',
+      email: activeCompany?.email || 'erp@construction.ph',
+    };
+  }, [state, currentUser, sessionEmployee, activeCompany, activeAccess]);
+
+  // Company-isolated pending notifications scoped to user's accessible modules
   const notifications = useMemo(() => {
-    if (!currentUser) return [];
-    const canSee = (m: ModuleId) => currentUser.isAdmin || currentUser.allowedModules.includes(m);
+    if (!currentUser || !activeAccess || !state) return [];
+    const canSee = (m: ModuleId) =>
+      currentUser.isAdmin || activeAccess.allowedModules.includes(m);
     const items: { id: string; text: string; module: ModuleId }[] = [];
     const today = todayISO();
 
@@ -178,7 +344,9 @@ export default function App() {
     }
 
     if (canSee('vouchers')) {
-      const unpaid = state.vouchers.filter((v) => v.status === 'Pending Approval' || v.status === 'Approved');
+      const unpaid = state.vouchers.filter(
+        (v) => v.status === 'Pending Approval' || v.status === 'Approved'
+      );
       for (const v of unpaid) {
         items.push({
           id: `notif-dv-${v.id}`,
@@ -202,13 +370,14 @@ export default function App() {
     }
 
     return items;
-  }, [currentUser, state]);
+  }, [currentUser, activeAccess, state]);
 
-  // Global quick search results across accessible modules
+  // Company-isolated global quick search across accessible modules
   const searchResults = useMemo(() => {
     const q = globalQuery.trim().toLowerCase();
-    if (!q || !currentUser) return [];
-    const canSee = (m: ModuleId) => currentUser.isAdmin || currentUser.allowedModules.includes(m);
+    if (!q || !currentUser || !activeAccess || !state) return [];
+    const canSee = (m: ModuleId) =>
+      currentUser.isAdmin || activeAccess.allowedModules.includes(m);
     const hits: { label: string; sub: string; module: ModuleId }[] = [];
 
     if (canSee('requisitions')) {
@@ -221,7 +390,11 @@ export default function App() {
     if (canSee('purchasing')) {
       for (const p of state.purchaseRequests) {
         if (p.prNo.toLowerCase().includes(q) || p.reqNo.toLowerCase().includes(q)) {
-          hits.push({ label: p.prNo, sub: `Purchase Request · ${p.status}`, module: 'purchasing' });
+          hits.push({
+            label: p.prNo,
+            sub: `Purchase Request · ${p.status}`,
+            module: 'purchasing',
+          });
         }
       }
     }
@@ -247,14 +420,28 @@ export default function App() {
       }
     }
     return hits.slice(0, 7);
-  }, [globalQuery, currentUser, state]);
+  }, [globalQuery, currentUser, activeAccess, state]);
 
-  if (!currentUser) {
+  // Step 1: Login Gate
+  if (!authToken || !currentUser) {
     return (
       <LoginScreen
-        users={state.users}
-        employees={state.employees}
-        onLogin={handleLogin}
+        onLoginSuccess={handleLoginSuccess}
+        darkMode={darkMode}
+        onToggleDarkMode={toggleDarkMode}
+      />
+    );
+  }
+
+  // Step 2: Company Selection Gate
+  if (!activeCompany || !activeAccess || !state) {
+    return (
+      <CompanySelectScreen
+        user={currentUser}
+        employee={sessionEmployee}
+        availableCompanies={availableCompanies}
+        onSelectCompany={handleSelectCompany}
+        onLogout={handleLogout}
         darkMode={darkMode}
         onToggleDarkMode={toggleDarkMode}
       />
@@ -268,13 +455,37 @@ export default function App() {
     .map((n) => n[0].toUpperCase())
     .join('');
 
+  const canSwitchCompany = availableCompanies.length > 1;
+  const activeRoleLabel = activeAccess.roleLabel || currentUser.roleLabel;
+  const isModuleAllowed =
+    currentUser.isAdmin || activeAccess.allowedModules.includes(activeModule);
+
   const renderActiveModule = () => {
+    if (!isModuleAllowed) {
+      return (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center max-w-lg mx-auto mt-10 space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300 flex items-center justify-center mx-auto">
+            <Lock className="w-6 h-6" />
+          </div>
+          <h2 className="font-display text-lg font-bold text-slate-900 dark:text-slate-100">
+            Module Restricted for {activeCompany.code}
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Your assigned role ({activeRoleLabel}) inside {activeCompany.name} does not grant access to this module.
+          </p>
+        </div>
+      );
+    }
+
     switch (activeModule) {
       case 'dashboard':
         return (
           <DashboardModule
             state={state}
             currentUser={currentUser}
+            activeCompany={activeCompany}
+            can={can}
+            allowedModules={allowedModuleIds}
             userName={currentEmployee.name.split(' ')[0]}
             onNavigate={setActiveModule}
           />
@@ -284,6 +495,8 @@ export default function App() {
           <RequisitionsModule
             state={state}
             currentEmployee={currentEmployee}
+            activeCompany={activeCompany}
+            can={can}
             onUpdateState={updateState}
             onOpenPrint={setPrintDoc}
           />
@@ -293,6 +506,8 @@ export default function App() {
           <CanvassingModule
             state={state}
             currentEmployee={currentEmployee}
+            activeCompany={activeCompany}
+            can={can}
             onUpdateState={updateState}
             onOpenPrint={setPrintDoc}
           />
@@ -302,6 +517,8 @@ export default function App() {
           <PurchasingModule
             state={state}
             currentEmployee={currentEmployee}
+            activeCompany={activeCompany}
+            can={can}
             onUpdateState={updateState}
             onOpenPrint={setPrintDoc}
           />
@@ -311,6 +528,8 @@ export default function App() {
           <OrdersModule
             state={state}
             currentEmployee={currentEmployee}
+            activeCompany={activeCompany}
+            can={can}
             onUpdateState={updateState}
           />
         );
@@ -319,6 +538,8 @@ export default function App() {
           <VouchersModule
             state={state}
             currentEmployee={currentEmployee}
+            activeCompany={activeCompany}
+            can={can}
             onUpdateState={updateState}
           />
         );
@@ -327,6 +548,8 @@ export default function App() {
           <AccountingModule
             state={state}
             currentEmployee={currentEmployee}
+            activeCompany={activeCompany}
+            can={can}
             onUpdateState={updateState}
           />
         );
@@ -335,6 +558,8 @@ export default function App() {
           <ToolsModule
             state={state}
             currentEmployee={currentEmployee}
+            activeCompany={activeCompany}
+            can={can}
             onUpdateState={updateState}
             onOpenPrint={setPrintDoc}
           />
@@ -343,6 +568,7 @@ export default function App() {
         return (
           <DocumentTrackerModule
             state={state}
+            activeCompany={activeCompany}
             onOpenPrint={setPrintDoc}
           />
         );
@@ -351,6 +577,8 @@ export default function App() {
           <ReportsModule
             state={state}
             currentEmployee={currentEmployee}
+            activeCompany={activeCompany}
+            can={can}
             onOpenPrint={setPrintDoc}
           />
         );
@@ -359,6 +587,8 @@ export default function App() {
           <MasterDataModule
             state={state}
             currentUser={currentUser}
+            activeCompany={activeCompany}
+            can={can}
             onUpdateState={updateState}
           />
         );
@@ -368,12 +598,15 @@ export default function App() {
   return (
     <div className="min-h-screen p-2 sm:p-4 lg:p-6 flex items-stretch justify-center">
       {/* Floating Rounded Shell */}
-      <div className="w-full max-w-[1440px] bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-blue-100/80 dark:border-slate-800 flex overflow-hidden min-h-[calc(100vh-3rem)] no-print">
+      <div
+        className="w-full max-w-[1440px] bg-white dark:bg-slate-900 rounded-3xl shadow-xl border flex overflow-hidden min-h-[calc(100vh-3rem)] no-print"
+        style={{ borderColor: 'var(--brand-shell-border)' }}
+      >
         {/* Sidebar (Desktop) */}
         <aside className="hidden lg:flex w-64 shrink-0 flex-col justify-between bg-slate-50/70 dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 p-5">
           <div className="space-y-6">
             <div className="px-1">
-              <RfbLogo size="md" showText={true} />
+              <RfbLogo company={activeCompany} size="md" showText={true} />
             </div>
 
             <nav className="space-y-1">
@@ -387,13 +620,13 @@ export default function App() {
                     onClick={() => setActiveModule(item.id)}
                     className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer ${
                       active
-                        ? 'bg-blue-50 text-[#123E82] dark:bg-blue-950/60 dark:text-blue-300'
+                        ? 'brand-soft-surface'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
                     }`}
                   >
                     <Icon
                       className={`w-4 h-4 shrink-0 ${
-                        active ? 'text-[#2C6FE0] dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'
+                        active ? 'brand-text-accent' : 'text-slate-400 dark:text-slate-500'
                       }`}
                     />
                     <span className="truncate">{item.label}</span>
@@ -403,12 +636,25 @@ export default function App() {
             </nav>
           </div>
 
-          <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800 space-y-3">
+          <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800 space-y-2.5">
             <div className="px-2 text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
-              RFB Construction Corp.
-              <br />
-              P-1 A Brgy. Doongan, Butuan City, Agusan Del Norte
+              <div className="font-semibold text-slate-600 dark:text-slate-300">
+                {activeCompany.legalName}
+              </div>
+              <div>{activeCompany.address}</div>
             </div>
+
+            {canSwitchCompany && (
+              <button
+                type="button"
+                onClick={handleExitToCompanySelector}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold brand-soft-surface hover:opacity-90 rounded-xl transition-opacity cursor-pointer"
+              >
+                <ArrowLeftRight className="w-4 h-4 shrink-0" />
+                <span>Switch Company</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleLogout}
@@ -425,9 +671,9 @@ export default function App() {
           <div className="fixed inset-0 z-40 lg:hidden flex">
             <div className="fixed inset-0 bg-slate-900/50" onClick={() => setMobileMenuOpen(false)} />
             <aside className="relative w-64 bg-white dark:bg-slate-900 h-full p-5 flex flex-col justify-between shadow-2xl z-10 border-r border-slate-200 dark:border-slate-800">
-              <div className="space-y-5">
+              <div className="space-y-5 overflow-y-auto">
                 <div className="flex items-center justify-between">
-                  <RfbLogo size="sm" showText={true} />
+                  <RfbLogo company={activeCompany} size="sm" showText={true} />
                   <button
                     type="button"
                     onClick={() => setMobileMenuOpen(false)}
@@ -450,7 +696,7 @@ export default function App() {
                         }}
                         className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold ${
                           active
-                            ? 'bg-blue-50 text-[#123E82] dark:bg-blue-950/60 dark:text-blue-300'
+                            ? 'brand-soft-surface'
                             : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
@@ -461,13 +707,27 @@ export default function App() {
                   })}
                 </nav>
               </div>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/50 rounded-xl"
-              >
-                <LogOut className="w-4 h-4" /> Sign Out
-              </button>
+              <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                {canSwitchCompany && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleExitToCompanySelector();
+                    }}
+                    className="w-full flex items-center gap-2 px-3.5 py-2 text-xs font-semibold brand-soft-surface rounded-xl"
+                  >
+                    <ArrowLeftRight className="w-4 h-4" /> Switch Company
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/50 rounded-xl"
+                >
+                  <LogOut className="w-4 h-4" /> Sign Out
+                </button>
+              </div>
             </aside>
           </div>
         )}
@@ -475,26 +735,26 @@ export default function App() {
         {/* Right Main Content Column */}
         <div className="flex-1 flex flex-col min-w-0 bg-[#F8FAFC] dark:bg-slate-950">
           {/* Clean Topbar */}
-          <header className="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 flex-1 max-w-md">
+          <header className="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 flex-1 max-w-md min-w-0">
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(true)}
-                className="lg:hidden p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="lg:hidden p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0"
                 aria-label="Open menu"
               >
                 <Menu className="w-4 h-4" />
               </button>
 
-              {/* Working Global Search */}
-              <div className="relative flex-1">
+              {/* Working Company-Isolated Global Search */}
+              <div className="relative flex-1 min-w-0">
                 <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={globalQuery}
                   onChange={(e) => setGlobalQuery(e.target.value)}
-                  placeholder="Jump to REQ, PR, PO, DV, supplier, or tool..."
-                  className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-[#2C6FE0]/25 focus:border-[#2C6FE0]"
+                  placeholder={`Search ${activeCompany.code} REQ, PR, PO, DV, tool...`}
+                  className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-600"
                 />
                 {searchResults.length > 0 && (
                   <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-30 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
@@ -506,9 +766,9 @@ export default function App() {
                           setActiveModule(hit.module);
                           setGlobalQuery('');
                         }}
-                        className="w-full text-left px-3.5 py-2.5 hover:bg-blue-50/60 dark:hover:bg-slate-800/80 flex items-center justify-between text-xs cursor-pointer"
+                        className="w-full text-left px-3.5 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/80 flex items-center justify-between text-xs cursor-pointer"
                       >
-                        <span className="font-mono font-semibold text-[#123E82] dark:text-blue-300">{hit.label}</span>
+                        <span className="font-mono font-semibold brand-text-primary">{hit.label}</span>
                         <span className="text-slate-500 dark:text-slate-400 truncate ml-3">{hit.sub}</span>
                       </button>
                     ))}
@@ -517,12 +777,90 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+              {/* Active Company Indicator & Instant Switcher (no re-login) */}
+              <div className="relative">
+                {canSwitchCompany ? (
+                  <button
+                    type="button"
+                    disabled={switchingCompany}
+                    onClick={() => setShowCompanyMenu((v) => !v)}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-100 transition-colors cursor-pointer"
+                    title="Switch active company workspace without re-login"
+                  >
+                    <img
+                      src={activeCompany.logoUrl}
+                      alt={activeCompany.code}
+                      className="w-5 h-5 object-contain shrink-0"
+                    />
+                    <span className="font-mono font-bold brand-text-primary">{activeCompany.code}</span>
+                    <span className="hidden md:inline text-slate-600 dark:text-slate-300 truncate max-w-[130px]">
+                      {activeCompany.name}
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+                ) : (
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-100">
+                    <img
+                      src={activeCompany.logoUrl}
+                      alt={activeCompany.code}
+                      className="w-5 h-5 object-contain shrink-0"
+                    />
+                    <span className="font-mono font-bold brand-text-primary">{activeCompany.code}</span>
+                    <span className="hidden md:inline text-slate-600 dark:text-slate-300">
+                      {activeCompany.name}
+                    </span>
+                  </div>
+                )}
+
+                {showCompanyMenu && canSwitchCompany && (
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl z-30 overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5" /> Switch Company
+                      </span>
+                      <span>No Re-Login</span>
+                    </div>
+                    <div className="p-1.5 space-y-1">
+                      {availableCompanies.map((comp) => {
+                        const isCurrent = comp.id === activeCompany.id;
+                        return (
+                          <button
+                            key={comp.id}
+                            type="button"
+                            disabled={switchingCompany || isCurrent}
+                            onClick={() => handleSelectCompany(comp.id)}
+                            className={`w-full flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl text-left text-xs transition-colors cursor-pointer ${
+                              isCurrent
+                                ? 'brand-soft-surface font-semibold'
+                                : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <img
+                                src={comp.logoUrl}
+                                alt={comp.name}
+                                className="w-7 h-7 object-contain shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <div className="font-bold truncate">{comp.name}</div>
+                                <div className="text-[11px] opacity-75 truncate">{comp.legalName}</div>
+                              </div>
+                            </div>
+                            {isCurrent && <Check className="w-4 h-4 shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Dark / Light Theme Toggle */}
               <button
                 type="button"
                 onClick={toggleDarkMode}
-                className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-[#123E82] dark:hover:text-white transition-colors cursor-pointer"
+                className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                 aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
                 title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
               >
@@ -534,12 +872,12 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setShowNotifs((v) => !v)}
-                  className="relative p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-[#123E82] dark:hover:text-white transition-colors cursor-pointer"
+                  className="relative p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                   aria-label="Notifications"
                 >
                   <Bell className="w-4 h-4" />
                   {notifications.length > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#2C6FE0] text-white text-[10px] font-mono font-bold flex items-center justify-center">
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full brand-btn-primary text-[10px] font-mono font-bold flex items-center justify-center">
                       {notifications.length}
                     </span>
                   )}
@@ -548,13 +886,13 @@ export default function App() {
                 {showNotifs && (
                   <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl z-30 overflow-hidden">
                     <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-slate-900 dark:text-slate-100">
-                      <span>Pending Action Items</span>
-                      <span className="font-mono text-[#2C6FE0] dark:text-blue-400">{notifications.length}</span>
+                      <span>{activeCompany.code} Pending Actions</span>
+                      <span className="font-mono brand-text-accent">{notifications.length}</span>
                     </div>
                     <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
                       {notifications.length === 0 ? (
                         <div className="p-4 text-xs text-slate-500 dark:text-slate-400">
-                          All caught up! No pending actions.
+                          All caught up! No pending actions in {activeCompany.name}.
                         </div>
                       ) : (
                         notifications.map((n) => (
@@ -565,7 +903,7 @@ export default function App() {
                               setActiveModule(n.module);
                               setShowNotifs(false);
                             }}
-                            className="w-full text-left px-4 py-2.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-blue-50/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            className="w-full text-left px-4 py-2.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                           >
                             {n.text}
                           </button>
@@ -576,9 +914,9 @@ export default function App() {
                 )}
               </div>
 
-              {/* Profile Avatar + Name + Role */}
+              {/* Profile Avatar + Name + Company-Scoped Role */}
               <div className="flex items-center gap-2.5 pl-2.5 border-l border-slate-200 dark:border-slate-800">
-                <div className="w-9 h-9 rounded-full bg-[#123E82] text-white font-display font-bold text-xs flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-full brand-btn-dark font-display font-bold text-xs flex items-center justify-center shrink-0">
                   {initials}
                 </div>
                 <div className="hidden sm:block leading-tight">
@@ -586,23 +924,42 @@ export default function App() {
                     {currentEmployee.name}
                   </div>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                    {currentUser.roleLabel}
+                    {activeRoleLabel}
                   </div>
                 </div>
               </div>
             </div>
           </header>
 
+          {/* Backend Sync / Permission Rejection Banner */}
+          {syncError && (
+            <div className="mx-5 sm:mx-8 mt-4 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-red-700 dark:text-red-300">
+              <div className="flex items-center gap-2 font-medium">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{syncError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSyncError('')}
+                className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/50"
+                aria-label="Dismiss alert"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           {/* Main Module Viewport */}
           <main className="flex-1 p-5 sm:p-8 overflow-y-auto">{renderActiveModule()}</main>
         </div>
       </div>
 
-      {/* Universal Print Preview Modal (Official PR Form, Borrower Slip, Document Tracking Slip, Reports) */}
+      {/* Universal Print Preview Modal */}
       {printDoc && (
         <PrintPreviewModal
           doc={printDoc}
           state={state}
+          activeCompany={activeCompany}
           onClose={() => setPrintDoc(null)}
         />
       )}

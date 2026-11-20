@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Plus, Printer, Send, Trash2, X } from 'lucide-react';
-import { Employee, ERPState, ItemGroup, PrintDocument, Requisition, RequisitionItem } from '../../types/erp';
+import { Company, Employee, ERPState, ItemGroup, PermissionId, PrintDocument, Requisition, RequisitionItem } from '../../types/erp';
 import { findDuplicateRequisitions, formatPHP, nextCode, todayISO } from '../../utils/formatters';
 import { StatusText } from '../StatusText';
 
 interface RequisitionsModuleProps {
   state: ERPState;
   currentEmployee: Employee;
+  activeCompany: Company;
+  can: (perm: PermissionId) => boolean;
   onUpdateState: (updater: (prev: ERPState) => ERPState) => void;
   onOpenPrint: (doc: PrintDocument) => void;
 }
@@ -16,6 +18,8 @@ const ITEM_GROUPS: ItemGroup[] = ['Construction Materials', 'ICT Equipment', 'Ge
 export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
   state,
   currentEmployee,
+  activeCompany,
+  can,
   onUpdateState,
   onOpenPrint,
 }) => {
@@ -48,6 +52,9 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
   // Duplicate warning modal state
   const [duplicateMatches, setDuplicateMatches] = useState<Requisition[] | null>(null);
 
+  const canCreate = can('create_transactions');
+  const docPrefix = (code: string) => (activeCompany.code === 'RFB' ? code : `${activeCompany.code}-${code}`);
+
   const handleSelectMaterial = (rowIdx: number, val: string) => {
     if (val === '__ADD_NEW__') {
       setNewItemForm({
@@ -79,12 +86,13 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
 
   const handleSaveNewItem = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newItemForm.name.trim() || addItemForRow === null) return;
+    if (!canCreate || !newItemForm.name.trim() || addItemForRow === null) return;
     const newId = `mat-${Date.now()}`;
-    const newCode = `MAT-${String(state.materials.length + 1).padStart(3, '0')}`;
+    const newCode = `${activeCompany.code}-MAT-${String(state.materials.length + 1).padStart(3, '0')}`;
     const cost = Number(newItemForm.standardCost) || 0;
     const created = {
       id: newId,
+      companyId: activeCompany.id,
       code: newCode,
       name: newItemForm.name.trim(),
       group: newItemForm.group,
@@ -115,14 +123,16 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
   };
 
   const commitRequisition = () => {
+    if (!canCreate) return;
     const reqNo = nextCode(
-      'REQ',
+      docPrefix('REQ'),
       state.requisitions.map((r) => r.reqNo)
     );
     const newReq: Requisition = {
       id: `req-${Date.now()}`,
+      companyId: activeCompany.id,
       reqNo,
-      projectId,
+      projectId: projectId || state.projects[0]?.id || '',
       department: currentEmployee.department,
       category,
       requestedBy: currentEmployee.name,
@@ -162,10 +172,11 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
   };
 
   const handleOpenCanvass = (req: Requisition) => {
+    if (!canCreate) return;
     const alreadyExists = state.canvasses.some((c) => c.reqId === req.id);
     if (alreadyExists) return;
     const canvassNo = nextCode(
-      'CNV',
+      docPrefix('CNV'),
       state.canvasses.map((c) => c.canvassNo)
     );
     onUpdateState((prev) => ({
@@ -176,6 +187,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
       canvasses: [
         {
           id: `cnv-${Date.now()}`,
+          companyId: activeCompany.id,
           canvassNo,
           reqId: req.id,
           reqNo: req.reqNo,
@@ -202,18 +214,32 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
         <div>
           <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">Material &amp; Supply Requisitions</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Construction materials, ICT equipment, and general supplies with automatic duplicate detection.
+            {activeCompany.name} ({activeCompany.code}) construction materials, ICT equipment, and general supplies with automatic duplicate detection.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-xl shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          New Requisition
-        </button>
+        {canCreate && (
+          <button
+            type="button"
+            onClick={() => {
+              setProjectId(state.projects[0]?.id || '');
+              setLineItems([
+                {
+                  materialId: state.materials[0]?.id || '',
+                  materialName: state.materials[0]?.name || '',
+                  unit: state.materials[0]?.unit || 'Bag',
+                  qty: 10,
+                  estUnitPrice: state.materials[0]?.standardCost || 250,
+                },
+              ]);
+              setShowCreate(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold brand-btn-primary rounded-xl shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            New Requisition
+          </button>
+        )}
       </div>
 
       {/* Category Filter Tabs */}
@@ -225,7 +251,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
             onClick={() => setFilterCat(cat)}
             className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
               filterCat === cat
-                ? 'bg-white dark:bg-slate-900 text-[#123E82] dark:text-blue-300 shadow-xs'
+                ? 'bg-white dark:bg-slate-900 brand-text-primary shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
@@ -256,7 +282,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
               const hasCanvass = state.canvasses.some((c) => c.reqId === req.id);
               return (
                 <tr key={req.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                  <td className="px-4 py-3 font-mono font-semibold text-[#123E82] dark:text-blue-300 whitespace-nowrap">
+                  <td className="px-4 py-3 font-mono font-semibold brand-text-primary whitespace-nowrap">
                     {req.reqNo}
                   </td>
                   <td className="px-4 py-3 text-slate-700 dark:text-slate-300 whitespace-nowrap">{req.category}</td>
@@ -285,11 +311,11 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                       <Printer className="w-3.5 h-3.5" />
                       Slip
                     </button>
-                    {!hasCanvass && req.status !== 'Cancelled' && (
+                    {canCreate && !hasCanvass && req.status !== 'Cancelled' && (
                       <button
                         type="button"
                         onClick={() => handleOpenCanvass(req)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#123E82] dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold brand-soft-surface hover:opacity-90 rounded-lg cursor-pointer"
                       >
                         <Send className="w-3.5 h-3.5" />
                         Open Canvass
@@ -304,12 +330,14 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
       </div>
 
       {/* New Requisition Modal */}
-      {showCreate && (
+      {showCreate && canCreate && (
         <div className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-3xl overflow-hidden my-4">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Create New Requisition</h3>
+                <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
+                  Create {activeCompany.code} Requisition
+                </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Requested by {currentEmployee.name} ({currentEmployee.department})
                 </p>
@@ -394,7 +422,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                         },
                       ])
                     }
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-[#2C6FE0] dark:text-blue-400 hover:underline cursor-pointer"
+                    className="inline-flex items-center gap-1 text-xs font-semibold brand-text-accent hover:underline cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" /> Add Line
                   </button>
@@ -419,7 +447,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                               ))}
                           </optgroup>
                         ))}
-                        <option value="__ADD_NEW__" className="font-bold text-[#123E82] dark:text-blue-300">
+                        <option value="__ADD_NEW__" className="font-bold">
                           + Add New Item…
                         </option>
                       </select>
@@ -467,7 +495,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer"
                 >
                   Submit Requisition
                 </button>
@@ -478,11 +506,11 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
       )}
 
       {/* Modal-on-top-of-modal: + Add New Item */}
-      {addItemForRow !== null && (
+      {addItemForRow !== null && canCreate && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-slate-800">
-              <h4 className="font-display text-sm font-bold text-[#123E82] dark:text-blue-300">+ Add New Item to Catalog</h4>
+              <h4 className="font-display text-sm font-bold brand-text-primary">+ Add New Item to {activeCompany.code} Catalog</h4>
               <button
                 type="button"
                 onClick={() => setAddItemForRow(null)}
@@ -549,7 +577,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer"
                 >
                   Save &amp; Select Item
                 </button>
@@ -568,7 +596,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
               <div>
                 <h4 className="font-display text-sm font-bold text-amber-950 dark:text-amber-200">Possible Duplicate Requisition Detected</h4>
                 <p className="text-xs text-amber-800 dark:text-amber-300">
-                  Existing open request(s) on the same project already include one or more of these items.
+                  Existing open request(s) on the same {activeCompany.code} project already include one or more of these items.
                 </p>
               </div>
             </div>
@@ -577,7 +605,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                 {duplicateMatches.map((d) => (
                   <div key={d.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs bg-slate-50 dark:bg-slate-800/70">
                     <div className="flex items-center justify-between font-semibold text-slate-900 dark:text-slate-100">
-                      <span className="font-mono text-[#123E82] dark:text-blue-300">{d.reqNo}</span>
+                      <span className="font-mono brand-text-primary">{d.reqNo}</span>
                       <span>{d.dateRequested} · {d.status}</span>
                     </div>
                     <div className="text-slate-600 dark:text-slate-400 mt-1">

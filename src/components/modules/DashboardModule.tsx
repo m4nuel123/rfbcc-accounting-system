@@ -6,18 +6,22 @@ import {
   Database,
   DollarSign,
   FileSpreadsheet,
+  Lock,
   Plus,
   TrendingDown,
   Wrench,
 } from 'lucide-react';
 import { SQL_WAREHOUSE_SCHEMA } from '../../utils/erpConfig';
-import { ERPState, ModuleId, UserAccount } from '../../types/erp';
+import { Company, ERPState, ModuleId, PermissionId, SafeUserAccount } from '../../types/erp';
 import { formatCompactPHP, formatPHP, getGreeting } from '../../utils/formatters';
 import { BudgetVsActualChart, CategoryDonutChart, MonthlyTrendChart } from '../Charts';
 
 interface DashboardModuleProps {
   state: ERPState;
-  currentUser: UserAccount;
+  currentUser: SafeUserAccount;
+  activeCompany: Company;
+  can: (perm: PermissionId) => boolean;
+  allowedModules: ModuleId[];
   userName: string;
   onNavigate: (module: ModuleId) => void;
 }
@@ -25,12 +29,16 @@ interface DashboardModuleProps {
 export const DashboardModule: React.FC<DashboardModuleProps> = ({
   state,
   currentUser,
+  activeCompany,
+  can,
+  allowedModules,
   userName,
   onNavigate,
 }) => {
   const [showSqlWarehouse, setShowSqlWarehouse] = useState(false);
 
-  const canAccess = (m: ModuleId) => currentUser.isAdmin || currentUser.allowedModules.includes(m);
+  const canAccess = (m: ModuleId) => currentUser.isAdmin || allowedModules.includes(m);
+  const canViewDashboard = currentUser.isAdmin || can('view_dashboard');
 
   const metrics = useMemo(() => {
     const totalBudget = state.projects.reduce((s, p) => s + p.budget, 0);
@@ -71,7 +79,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
         catMap.set(cat, (catMap.get(cat) || 0) + it.qty * it.unitPrice);
       }
     }
-    const palette = ['#2C6FE0', '#123E82', '#0EA5E9', '#6366F1', '#10B981'];
+    const palette = [activeCompany.themeAccent, activeCompany.themePrimary, '#0EA5E9', '#6366F1', '#10B981'];
     const categoryDonut = Array.from(catMap.entries()).map(([label, value], i) => ({
       label,
       value,
@@ -114,7 +122,37 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
       supplierSpend,
       trendData,
     };
-  }, [state]);
+  }, [state, activeCompany]);
+
+  if (!canViewDashboard) {
+    return (
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 max-w-xl mx-auto text-center space-y-4 shadow-xs">
+        <div className="w-12 h-12 rounded-2xl brand-soft-surface flex items-center justify-center mx-auto">
+          <Lock className="w-6 h-6" />
+        </div>
+        <h2 className="font-display text-lg font-bold text-slate-900 dark:text-slate-100">
+          Executive Dashboard Restricted
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Your role in <strong>{activeCompany.name}</strong> does not include the <code className="font-mono">view_dashboard</code> permission. Use your assigned workspace modules below.
+        </p>
+        <div className="flex flex-wrap justify-center gap-2 pt-2">
+          {allowedModules
+            .filter((m) => m !== 'dashboard')
+            .map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => onNavigate(m)}
+                className="px-3.5 py-2 text-xs font-semibold rounded-xl brand-btn-primary cursor-pointer capitalize"
+              >
+                Open {m}
+              </button>
+            ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -125,7 +163,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
             {getGreeting()}, {userName}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            RFB Construction Executive Business Intelligence · Butuan City HQ &amp; Operations
+            {activeCompany.name} ({activeCompany.code}) Executive Business Intelligence · {activeCompany.address}
           </p>
         </div>
 
@@ -133,17 +171,17 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
           <button
             type="button"
             onClick={() => setShowSqlWarehouse((v) => !v)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#123E82] dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold brand-soft-surface hover:opacity-90 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             <Database className="w-3.5 h-3.5" />
             {showSqlWarehouse ? 'Hide DW Star Schema' : 'SQL Data Warehouse'}
           </button>
 
-          {canAccess('requisitions') && (
+          {canAccess('requisitions') && can('create_transactions') && (
             <button
               type="button"
               onClick={() => onNavigate('requisitions')}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-xl shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold brand-btn-primary rounded-xl shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               New Requisition
@@ -155,17 +193,17 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
               onClick={() => onNavigate('vouchers')}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <DollarSign className="w-3.5 h-3.5 text-[#2C6FE0] dark:text-blue-400" />
+              <DollarSign className="w-3.5 h-3.5 brand-text-accent" />
               Record Payment
             </button>
           )}
-          {canAccess('reports') && (
+          {canAccess('reports') && can('generate_reports') && (
             <button
               type="button"
               onClick={() => onNavigate('reports')}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-[#2C6FE0] dark:text-blue-400" />
+              <FileSpreadsheet className="w-3.5 h-3.5 brand-text-accent" />
               Generate Report
             </button>
           )}
@@ -185,7 +223,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
                 {metrics.utilizationPct}% of {formatCompactPHP(metrics.totalBudget)} budget
               </div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/70 text-[#2C6FE0] dark:text-blue-400 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-full brand-soft-surface flex items-center justify-center shrink-0">
               <Building2 className="w-5 h-5" />
             </div>
           </div>
@@ -199,7 +237,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
                 {formatPHP(metrics.totalSavings)}
               </div>
               <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
-                Across {state.purchaseRequests.length} Purchase Requests
+                Across {state.purchaseRequests.length} {activeCompany.code} Purchase Requests
               </div>
             </div>
             <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
@@ -245,18 +283,18 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
 
       {/* Optional SQL Data Warehouse Star Schema Explorer */}
       {showSqlWarehouse && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-blue-200 dark:border-blue-900/70 p-6 shadow-xs space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h2 className="font-display text-base font-bold text-[#123E82] dark:text-blue-300">
-                SQL Data Warehouse — Star Schema &amp; Live Fact Aggregates
+              <h2 className="font-display text-base font-bold brand-text-primary">
+                {activeCompany.code} SQL Data Warehouse — Multi-Company Star Schema
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                OLTP transactions automatically roll up into dimensional fact metrics for project cost &amp; supplier BI.
+                OLTP transactions are company-isolated via <code className="font-mono">company_id</code> and roll up into dimensional BI metrics.
               </p>
             </div>
             <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-              Facts: {state.purchaseOrders.length} POs · {state.vouchers.length} DVs · {state.journalEntries.length} JEs
+              {activeCompany.code} Facts: {state.purchaseOrders.length} POs · {state.vouchers.length} DVs · {state.journalEntries.length} JEs
             </span>
           </div>
 
@@ -265,16 +303,18 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
               <div className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-2">Star Schema Dimensional Model</div>
               <div className="grid grid-cols-2 gap-2.5 text-xs">
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5">
-                  <div className="font-mono font-semibold text-[#123E82] dark:text-blue-300">fact_procurement</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">date_key, project_key, supplier_key, total_spend, canvass_savings</div>
+                  <div className="font-mono font-semibold brand-text-primary">fact_procurement</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">company_id, project_key, supplier_key, total_spend, canvass_savings</div>
                 </div>
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5">
-                  <div className="font-mono font-semibold text-[#123E82] dark:text-blue-300">fact_vouchers_gl</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">dv_no, po_no, three_way_match, payable_amt, paid_amt</div>
+                  <div className="font-mono font-semibold brand-text-primary">fact_vouchers_gl</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">company_id, dv_no, po_no, three_way_match, payable_amt, paid_amt</div>
                 </div>
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5">
-                  <div className="font-mono font-semibold text-slate-700 dark:text-slate-200">dim_project</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Bukidnon Road, Pulangi Bridge, Civic Building, Head Office</div>
+                  <div className="font-mono font-semibold text-slate-700 dark:text-slate-200">dim_project ({activeCompany.code})</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                    {state.projects.slice(0, 3).map((p) => p.name).join(', ') || 'No active projects'}
+                  </div>
                 </div>
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5">
                   <div className="font-mono font-semibold text-slate-700 dark:text-slate-200">dim_supplier &amp; dim_material</div>
@@ -296,10 +336,10 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Budget vs Actual Spend</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Active project allocations vs PO commitments</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{activeCompany.name} project allocations vs PO commitments</p>
             </div>
           </div>
-          <BudgetVsActualChart data={metrics.projectSeries} />
+          <BudgetVsActualChart data={metrics.projectSeries} accentColor={activeCompany.themeAccent} />
         </div>
 
         <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs">
@@ -321,20 +361,24 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
             <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Monthly Procurement Trend</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">Cumulative PO spend velocity by month</p>
           </div>
-          <MonthlyTrendChart data={metrics.trendData} />
+          <MonthlyTrendChart
+            data={metrics.trendData}
+            accentColor={activeCompany.themeAccent}
+            primaryColor={activeCompany.themePrimary}
+          />
         </div>
 
         <div className="lg:col-span-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Top Suppliers Ranking</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Awarded contract volume across accredited vendors</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Awarded contract volume across {activeCompany.code} accredited vendors</p>
             </div>
-            {canAccess('reports') && (
+            {canAccess('reports') && can('generate_reports') && (
               <button
                 type="button"
                 onClick={() => onNavigate('reports')}
-                className="text-xs font-semibold text-[#2C6FE0] dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                className="text-xs font-semibold brand-text-accent hover:underline inline-flex items-center gap-1 cursor-pointer"
               >
                 Full Report <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -357,8 +401,11 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
                   </div>
                   <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-[#2C6FE0] rounded-full"
-                      style={{ width: `${Math.max(4, pct)}%` }}
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.max(4, pct)}%`,
+                        backgroundColor: activeCompany.themeAccent,
+                      }}
                     />
                   </div>
                 </div>

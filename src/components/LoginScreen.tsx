@@ -1,77 +1,104 @@
-import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, KeyRound, Lock, Moon, ShieldCheck, Sun, User } from 'lucide-react';
-import { Employee, UserAccount } from '../types/erp';
-import { RfbLogo } from './RfbLogo';
+import React, { useEffect, useState } from 'react';
+import { Building2, ChevronDown, ChevronUp, KeyRound, Lock, Moon, ShieldCheck, Sun, User } from 'lucide-react';
+import { LoginResponse } from '../types/erp';
+import { apiLogin, DemoDirectoryEntry, fetchDemoDirectory } from '../utils/apiClient';
 
 interface LoginScreenProps {
-  users: UserAccount[];
-  employees: Employee[];
-  onLogin: (user: UserAccount) => void;
+  onLoginSuccess: (payload: LoginResponse) => void;
   darkMode: boolean;
   onToggleDarkMode: () => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
-  users,
-  employees,
-  onLogin,
+  onLoginSuccess,
   darkMode,
   onToggleDarkMode,
 }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
+  const [demoUsers, setDemoUsers] = useState<DemoDirectoryEntry[]>([]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchDemoDirectory()
+      .then(setDemoUsers)
+      .catch(() => setDemoUsers([]));
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const found = users.find(
-      (u) => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password
-    );
-    if (!found) {
-      setError('Invalid username or password. Check credentials or view demo accounts below.');
-      return;
+    setSubmitting(true);
+    try {
+      const payload = await apiLogin(username.trim(), password);
+      onLoginSuccess(payload);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to sign in.');
+    } finally {
+      setSubmitting(false);
     }
-    onLogin(found);
   };
 
-  const handleQuickFill = (u: UserAccount) => {
-    setUsername(u.username);
-    setPassword(u.password);
+  const handleQuickFill = (entry: DemoDirectoryEntry) => {
+    setUsername(entry.username);
+    setPassword(entry.passwordHint);
     setError('');
   };
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-8">
-      <div className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-blue-100/80 dark:border-slate-800 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
-        {/* Left brand panel */}
-        <div className="lg:col-span-5 bg-gradient-to-br from-[#123E82] via-[#1B52AA] to-[#2C6FE0] text-white p-8 flex flex-col justify-between">
+      <div className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200/80 dark:border-slate-800 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+        {/* Left centralized group brand panel */}
+        <div className="lg:col-span-5 bg-gradient-to-br from-[#123E82] via-[#134263] to-[#113E2B] text-white p-8 flex flex-col justify-between">
           <div>
-            <div className="inline-flex items-center gap-3 mb-8">
-              <RfbLogo size="md" showText={false} />
+            <div className="flex items-center gap-3 mb-7">
+              <div className="flex items-center -space-x-2">
+                <div className="w-11 h-11 rounded-xl bg-white p-1.5 shadow-sm flex items-center justify-center">
+                  <img
+                    src="/assets/aistudio/rfb-logo.png"
+                    alt="RFB Construction Emblem"
+                    className="w-full h-full object-contain"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+                <div className="w-11 h-11 rounded-xl bg-white p-1.5 shadow-sm flex items-center justify-center ring-2 ring-[#113E2B]/40">
+                  <img
+                    src="/assets/aistudio/image_d9fd67be.png"
+                    alt="RBI Construction Emblem"
+                    className="w-full h-full object-contain"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              </div>
               <div className="leading-tight">
-                <div className="font-display font-bold text-sm text-white">RFB Construction</div>
-                <div className="text-[11px] text-blue-100">P-1 A Brgy. Doongan Butuan City Agusan Del Norte</div>
+                <div className="font-display font-bold text-sm text-white">RFB &amp; RBI Group ERP</div>
+                <div className="text-[11px] text-slate-200/90">P-1 A Brgy. Doongan, Butuan City</div>
               </div>
             </div>
 
             <h1 className="font-display text-2xl font-bold tracking-tight leading-snug text-balance">
-              Enterprise Procurement, Accounting &amp; BI System
+              Multi-Company Accounting, Purchasing &amp; BI Portal
             </h1>
-            <p className="mt-3 text-sm text-blue-100/90 leading-relaxed">
-              Role-based operational workspace for Requisitions, Canvassing, 4-Step Purchasing Approval, Vouchering, General Ledger, and Tools Monitoring.
+            <p className="mt-3 text-sm text-slate-100/85 leading-relaxed">
+              One centralized application for <strong className="text-white">RFB Construction</strong> and{' '}
+              <strong className="text-emerald-200">RBI Construction (Rodnet Builders Inc.)</strong> with strict company isolation and role-based permissions.
             </p>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-white/15 space-y-2.5 text-xs text-blue-100">
+          <div className="mt-8 pt-6 border-t border-white/15 space-y-2.5 text-xs text-slate-100/90">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-emerald-300 shrink-0" />
+              <span>Select your assigned company workspace after login</span>
+            </div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-blue-200 shrink-0" />
-              <span>Session resets on reload for audit accountability</span>
+              <span>Server-verified RBAC permissions &amp; audit logging</span>
             </div>
             <div className="flex items-center gap-2">
               <Lock className="w-4 h-4 text-blue-200 shrink-0" />
-              <span>Modules strictly scoped per assigned user role</span>
+              <span>Strict zero-leak data isolation across RFB and RBI</span>
             </div>
           </div>
         </div>
@@ -89,9 +116,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           </button>
 
           <div className="mb-6 pr-20">
-            <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100">Sign in to RFB System</h2>
+            <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100">Centralized System Sign In</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Enter your assigned username and password to continue.
+              Sign in once to view and access the construction companies assigned to your account.
             </p>
           </div>
 
@@ -104,7 +131,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. admin, maria, juan"
+                  placeholder="e.g. admin, user_c, user_a, user_b, user_d"
                   className="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2C6FE0]/25 focus:border-[#2C6FE0]"
                   required
                 />
@@ -134,9 +161,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
             <button
               type="submit"
-              className="w-full py-2.5 px-4 bg-[#2C6FE0] hover:bg-[#1E56B8] text-white text-sm font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+              disabled={submitting}
+              className="w-full py-2.5 px-4 bg-[#123E82] hover:bg-[#0E3168] disabled:opacity-60 text-white text-sm font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
             >
-              Sign In
+              {submitting ? 'Authenticating...' : 'Continue to Company Selection'}
             </button>
           </form>
 
@@ -147,35 +175,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               onClick={() => setShowDemo((v) => !v)}
               className="w-full flex items-center justify-between text-xs font-semibold text-[#123E82] dark:text-blue-300 hover:text-[#2C6FE0] dark:hover:text-blue-200 py-1 cursor-pointer"
             >
-              <span>View demo accounts ({users.length} roles)</span>
+              <span>View demo accounts ({demoUsers.length} multi-company roles)</span>
               {showDemo ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
 
             {showDemo && (
               <div className="mt-3 max-h-56 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl divide-y divide-slate-100 dark:divide-slate-800">
-                {users.map((u) => {
-                  const emp = employees.find((e) => e.id === u.employeeId);
-                  return (
-                    <button
-                      key={u.id}
-                      type="button"
-                      onClick={() => handleQuickFill(u)}
-                      className="w-full text-left px-3.5 py-2.5 hover:bg-blue-50/70 dark:hover:bg-slate-800/70 transition-colors flex items-center justify-between gap-3 cursor-pointer"
-                    >
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
-                          {emp?.name || u.username} · <span className="text-[#123E82] dark:text-blue-300">{u.roleLabel}</span>
-                        </div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                          Modules: {u.isAdmin ? 'All Modules' : u.allowedModules.join(', ')}
-                        </div>
+                {demoUsers.map((u) => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => handleQuickFill(u)}
+                    className="w-full text-left px-3.5 py-2.5 hover:bg-blue-50/70 dark:hover:bg-slate-800/70 transition-colors flex items-center justify-between gap-3 cursor-pointer"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
+                        {u.employeeName} · <span className="text-[#123E82] dark:text-blue-300">{u.roleLabel}</span>
                       </div>
-                      <div className="shrink-0 font-mono text-[11px] text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
-                        {u.username} / {u.password}
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        Assigned Companies: {u.companies.map((c) => c.code).join(' + ') || 'None'}
                       </div>
-                    </button>
-                  );
-                })}
+                    </div>
+                    <div className="shrink-0 font-mono text-[11px] text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
+                      {u.username} / {u.passwordHint}
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
           </div>
