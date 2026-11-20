@@ -121,7 +121,23 @@ export default function App() {
   }, [darkMode]);
 
   useEffect(() => {
-    document.documentElement.dataset.company = activeCompany?.code === 'RBI' ? 'RBI' : 'RFB';
+    const code = activeCompany?.code === 'RBI' ? 'RBI' : 'RFB';
+    document.documentElement.dataset.company = code;
+
+    const iconHref =
+      activeCompany?.logoUrl ||
+      (code === 'RBI' ? '/assets/aistudio/image_d9fd67be.png' : '/assets/aistudio/rfb-logo.png');
+
+    for (const id of ['app-favicon', 'app-shortcut-icon', 'app-apple-icon']) {
+      const link = document.getElementById(id) as HTMLLinkElement | null;
+      if (link && link.getAttribute('href') !== iconHref) {
+        link.href = iconHref;
+      }
+    }
+
+    document.title = activeCompany
+      ? `${activeCompany.name} (${activeCompany.code}) — Accounting, Purchasing & BI`
+      : 'RFB & RBI Construction ERP — Multi-Company Accounting, Purchasing & BI';
   }, [activeCompany]);
 
   const toggleDarkMode = () => setDarkMode((prev) => !prev);
