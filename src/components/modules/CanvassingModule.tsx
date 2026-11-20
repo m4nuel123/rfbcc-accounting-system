@@ -323,6 +323,18 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
                   </div>
 
                   <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Remarks</label>
+                    <input
+                      type="text"
+                      value={quoteRemarks}
+                      onChange={(e) => setQuoteRemarks(e.target.value)}
+                      placeholder="Terms / delivery"
+                      className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-lg bg-white"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-10" />
+                  <div className="sm:col-span-2">
                     <button
                       type="submit"
                       className="w-full inline-flex items-center justify-center gap-1 px-3 py-2 text-xs font-semibold text-white bg-[#2C6FE0] hover:bg-[#1E56B8] rounded-lg cursor-pointer"

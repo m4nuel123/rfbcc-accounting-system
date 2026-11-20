@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Bell,
   BookOpen,
@@ -77,29 +77,6 @@ export default function App() {
   // Topbar search & notifications
   const [globalQuery, setGlobalQuery] = useState('');
   const [showNotifs, setShowNotifs] = useState(false);
-  const saveTimerRef = useRef<number | null>(null);
-
-  // Hydrate from Express backend on mount if saved state exists
-  useEffect(() => {
-    let active = true;
-    fetch('/api/state')
-      .then((res) => {
-        const ct = res.headers.get('content-type') || '';
-        if (!res.ok || !ct.includes('application/json')) return null;
-        return res.json();
-      })
-      .then((data) => {
-        if (active && data?.exists && data?.state) {
-          setState(data.state as ERPState);
-        }
-      })
-      .catch(() => {
-        // Fallback silently to localStorage/seed state (e.g. static Vercel hosting)
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const updateState = (updater: (prev: ERPState) => ERPState) => {
     setState((prev) => {
@@ -109,14 +86,6 @@ export default function App() {
       } catch {
         // ignore quota issues
       }
-      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = window.setTimeout(() => {
-        fetch('/api/state', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(next),
-        }).catch(() => {});
-      }, 250);
       return next;
     });
   };
