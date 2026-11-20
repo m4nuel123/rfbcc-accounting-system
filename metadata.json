@@ -1,0 +1,6 @@
+{
+  "name": "RFB Construction System",
+  "description": "Integrated Data Warehousing, Business Intelligence, Procurement, Canvassing, Purchasing, Accounting, Vouchering, and Tools Monitoring System for RFB Construction (Bukidnon).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
