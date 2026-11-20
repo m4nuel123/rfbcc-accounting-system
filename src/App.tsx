@@ -31,7 +31,7 @@ import { ReportsModule } from './components/modules/ReportsModule';
 import { RequisitionsModule } from './components/modules/RequisitionsModule';
 import { ToolsModule } from './components/modules/ToolsModule';
 import { VouchersModule } from './components/modules/VouchersModule';
-import { INITIAL_ERP_STATE } from './data/seedData';
+import { INITIAL_ERP_STATE } from './utils/erpConfig';
 import { ERPState, ModuleId, PrintDocument, UserAccount } from './types/erp';
 import { todayISO } from './utils/formatters';
 

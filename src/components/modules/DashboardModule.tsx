@@ -10,7 +10,7 @@ import {
   TrendingDown,
   Wrench,
 } from 'lucide-react';
-import { SQL_WAREHOUSE_SCHEMA } from '../../data/seedData';
+import { SQL_WAREHOUSE_SCHEMA } from '../../utils/erpConfig';
 import { ERPState, ModuleId, UserAccount } from '../../types/erp';
 import { formatCompactPHP, formatPHP, getGreeting } from '../../utils/formatters';
 import { BudgetVsActualChart, CategoryDonutChart, MonthlyTrendChart } from '../Charts';

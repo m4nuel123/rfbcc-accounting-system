@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Database, PenTool, Plus, Shield, Trash2, Users } from 'lucide-react';
-import { ALL_MODULES, SQL_WAREHOUSE_SCHEMA } from '../../data/seedData';
+import { ALL_MODULES, SQL_WAREHOUSE_SCHEMA } from '../../utils/erpConfig';
 import { Employee, ERPState, ItemGroup, ModuleId, ProjectType, UserAccount } from '../../types/erp';
 import { formatPHP } from '../../utils/formatters';
 import { SignaturePadModal } from '../SignaturePadModal';
