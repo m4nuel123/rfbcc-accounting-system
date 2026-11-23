@@ -1910,12 +1910,13 @@ function requireAuth(req, res, next) {
   req.user = user;
   next();
 }
+var ENFORCE_FIRST_LOGIN_PASSWORD_CHANGE = false;
 function requireActiveCompany(req, res, next) {
   if (!req.session || !req.user) {
     res.status(401).json({ error: "Authentication required" });
     return;
   }
-  if (req.user.mustChangePassword) {
+  if (ENFORCE_FIRST_LOGIN_PASSWORD_CHANGE && req.user.mustChangePassword) {
     res.status(403).json({ error: "Password change required before accessing company workspaces." });
     return;
   }
@@ -2048,7 +2049,7 @@ function createErpBackendRouter() {
       null,
       "User Login",
       "auth",
-      `Authenticated centralized session (${availableCompanies.map((c) => c.code).join(", ")} assigned)${found.mustChangePassword ? " \xB7 password change required" : ""}`
+      `Authenticated centralized session (${availableCompanies.map((c) => c.code).join(", ")} assigned)${ENFORCE_FIRST_LOGIN_PASSWORD_CHANGE && found.mustChangePassword ? " \xB7 password change required" : ""}`
     );
     persistDatabase();
     res.json({
@@ -2056,7 +2057,7 @@ function createErpBackendRouter() {
       user: sanitizeUser(found),
       availableCompanies,
       employee: emp,
-      mustChangePassword: Boolean(found.mustChangePassword)
+      mustChangePassword: ENFORCE_FIRST_LOGIN_PASSWORD_CHANGE && Boolean(found.mustChangePassword)
     });
   });
   router2.post("/auth/change-password", requireAuth, (req, res) => {
@@ -2109,7 +2110,7 @@ function createErpBackendRouter() {
     const user = req.user;
     const session = req.session;
     const { companyId } = req.body;
-    if (user.mustChangePassword) {
+    if (ENFORCE_FIRST_LOGIN_PASSWORD_CHANGE && user.mustChangePassword) {
       res.status(403).json({ error: "You must change your temporary password before entering a company workspace." });
       return;
     }

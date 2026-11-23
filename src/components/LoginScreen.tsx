@@ -123,7 +123,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-blue-200 shrink-0" />
-              <span>Hashed credentials &amp; first-login password setup enforcement</span>
+              <span>Hashed credentials &amp; optional self-service password setup</span>
             </div>
             <div className="flex items-center gap-2">
               <Lock className="w-4 h-4 text-blue-200 shrink-0" />

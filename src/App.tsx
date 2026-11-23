@@ -111,6 +111,7 @@ export default function App() {
   const [showNotifs, setShowNotifs] = useState(false);
   const [showCompanyMenu, setShowCompanyMenu] = useState(false);
   const [switchingCompany, setSwitchingCompany] = useState(false);
+  const [requirePasswordChange, setRequirePasswordChange] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [syncError, setSyncError] = useState('');
 
@@ -148,6 +149,7 @@ export default function App() {
   const handleLoginSuccess = (payload: LoginResponse) => {
     setAuthToken(payload.token);
     setCurrentUser(payload.user);
+    setRequirePasswordChange(Boolean(payload.mustChangePassword));
     setAvailableCompanies(payload.availableCompanies);
     setSessionEmployee(payload.employee);
     setActiveCompany(null);
@@ -233,6 +235,7 @@ export default function App() {
     setGlobalQuery('');
     setShowNotifs(false);
     setShowCompanyMenu(false);
+    setRequirePasswordChange(false);
     setPrintDoc(null);
     setSyncError('');
   };
@@ -452,14 +455,17 @@ export default function App() {
     );
   }
 
-  // Step 1B: Forced 1st-Login / Reset Password Change Gate
-  if (currentUser.mustChangePassword) {
+  // Step 1B: Forced Password Change Gate (disabled during beta test; controlled by backend response)
+  if (requirePasswordChange) {
     return (
       <ChangePasswordScreen
         token={authToken}
         user={currentUser}
         forced={true}
-        onSuccess={(updated) => setCurrentUser(updated)}
+        onSuccess={(updated) => {
+          setCurrentUser(updated);
+          setRequirePasswordChange(false);
+        }}
         onCancelOrLogout={handleLogout}
       />
     );

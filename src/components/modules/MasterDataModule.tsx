@@ -1575,11 +1575,11 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
                           </div>
                           {u.mustChangePassword ? (
                             <div className="text-[10px] font-semibold text-amber-700 dark:text-amber-300">
-                              Temp PW · Must Change on Login
+                              Temp PW (Beta Active)
                             </div>
                           ) : (
                             <div className="text-[10px] text-emerald-700 dark:text-emerald-400">
-                              Password Active
+                              Password Updated
                             </div>
                           )}
                         </td>
