@@ -91,6 +91,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
   const canGenerate = can('generate_reports');
   const canExport = can('export_reports');
+  const canPrint = can('print_documents') || canExport;
 
   const handleCategoryChange = (cat: ReportCategory) => {
     setModuleCat(cat);
@@ -408,40 +409,44 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </p>
         </div>
 
-        {canExport && (
+        {(canExport || canPrint) && (
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() =>
-                downloadCSV(
-                  `${activeCompany.code}_${reportName.replace(/\s+/g, '_')}.csv`,
-                  generated.columns,
-                  generated.rows
-                )
-              }
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5" /> Export CSV
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                onOpenPrint({
-                  kind: 'report',
-                  title: reportName,
-                  moduleName: moduleCat,
-                  periodLabel: generated.periodLabel,
-                  filtersSummary,
-                  generatedBy: `${currentEmployee.name} (${currentEmployee.position})`,
-                  columns: generated.columns,
-                  rows: generated.rows,
-                  summaryCards: generated.summaryCards,
-                })
-              }
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold brand-btn-primary rounded-xl shadow-xs cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5" /> Print / Export PDF
-            </button>
+            {canExport && (
+              <button
+                type="button"
+                onClick={() =>
+                  downloadCSV(
+                    `${activeCompany.code}_${reportName.replace(/\s+/g, '_')}.csv`,
+                    generated.columns,
+                    generated.rows
+                  )
+                }
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" /> Export CSV
+              </button>
+            )}
+            {canPrint && (
+              <button
+                type="button"
+                onClick={() =>
+                  onOpenPrint({
+                    kind: 'report',
+                    title: reportName,
+                    moduleName: moduleCat,
+                    periodLabel: generated.periodLabel,
+                    filtersSummary,
+                    generatedBy: `${currentEmployee.name} (${currentEmployee.position})`,
+                    columns: generated.columns,
+                    rows: generated.rows,
+                    summaryCards: generated.summaryCards,
+                  })
+                }
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold brand-btn-primary rounded-xl shadow-xs cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5" /> Print / Export PDF
+              </button>
+            )}
           </div>
         )}
       </div>

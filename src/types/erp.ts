@@ -17,11 +17,18 @@ export type PermissionId =
   | 'create_transactions'
   | 'edit_transactions'
   | 'delete_transactions'
+  | 'submit_transactions'
+  | 'process_transactions'
   | 'approve_transactions'
+  | 'reject_transactions'
+  | 'print_documents'
   | 'generate_reports'
   | 'export_reports'
   | 'manage_users'
   | 'manage_companies';
+
+export type AccountStatus = 'Active' | 'Inactive' | 'Resigned' | 'Suspended';
+export type EmploymentStatus = 'Regular' | 'Probationary' | 'Resigned' | 'Transferred' | 'Terminated';
 
 export interface Company {
   id: string;
@@ -97,10 +104,24 @@ export interface Employee {
 export interface UserAccount {
   id: string;
   username: string;
-  password: string;
+  password?: string;
+  passwordHash?: string;
+  employeeCode: string;
+  fullName: string;
+  department: string;
+  position: string;
   employeeId: string;
   roleLabel: string;
   isAdmin: boolean;
+  accountStatus: AccountStatus;
+  employmentStatus: EmploymentStatus;
+  mustChangePassword: boolean;
+  dateCreated: string;
+  lastLogin?: string;
+  createdBy: string;
+  updatedBy: string;
+  updatedAt?: string;
+  passwordUpdatedAt?: string;
   allowedModules: ModuleId[];
   companyAccess: UserCompanyAccess[];
 }
@@ -108,9 +129,22 @@ export interface UserAccount {
 export interface SafeUserAccount {
   id: string;
   username: string;
+  employeeCode: string;
+  fullName: string;
+  department: string;
+  position: string;
   employeeId: string;
   roleLabel: string;
   isAdmin: boolean;
+  accountStatus: AccountStatus;
+  employmentStatus: EmploymentStatus;
+  mustChangePassword: boolean;
+  dateCreated: string;
+  lastLogin?: string;
+  createdBy: string;
+  updatedBy: string;
+  updatedAt?: string;
+  passwordUpdatedAt?: string;
   allowedModules: ModuleId[];
   companyAccess: UserCompanyAccess[];
 }
@@ -437,6 +471,7 @@ export interface LoginResponse {
   user: SafeUserAccount;
   availableCompanies: Company[];
   employee: Employee | null;
+  mustChangePassword: boolean;
 }
 
 export interface SelectCompanyResponse {

@@ -5,7 +5,6 @@ import { apiLogin, DemoDirectoryEntry, fetchDemoDirectory } from '../utils/apiCl
 import { INITIAL_ERP_STATE } from '../utils/erpConfig';
 
 const FALLBACK_DEMO_USERS: DemoDirectoryEntry[] = INITIAL_ERP_STATE.users.map((u) => {
-  const emp = INITIAL_ERP_STATE.employees.find((e) => e.id === u.employeeId);
   const companies = (
     u.isAdmin
       ? INITIAL_ERP_STATE.companies.filter((c) => c.isActive)
@@ -16,10 +15,13 @@ const FALLBACK_DEMO_USERS: DemoDirectoryEntry[] = INITIAL_ERP_STATE.users.map((u
   return {
     id: u.id,
     username: u.username,
-    passwordHint: u.password,
-    employeeName: emp?.name || u.username,
+    employeeName: u.fullName,
+    department: u.department,
+    position: u.position,
     roleLabel: u.roleLabel,
     isAdmin: u.isAdmin,
+    mustChangePassword: u.mustChangePassword,
+    initialSetupTempMatchesUsername: u.mustChangePassword,
     companies,
   };
 });
@@ -50,7 +52,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         }
       })
       .catch(() => {
-        // Keep FALLBACK_DEMO_USERS so testing accounts remain available
+        // Keep FALLBACK_DEMO_USERS so initial directory stays visible
       });
   }, []);
 
@@ -70,7 +72,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
   const handleQuickFill = (entry: DemoDirectoryEntry) => {
     setUsername(entry.username);
-    setPassword(entry.passwordHint);
+    setPassword(entry.initialSetupTempMatchesUsername ? entry.username : '');
     setError('');
   };
 
@@ -121,7 +123,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-blue-200 shrink-0" />
-              <span>Server-verified RBAC permissions &amp; audit logging</span>
+              <span>Hashed credentials &amp; first-login password setup enforcement</span>
             </div>
             <div className="flex items-center gap-2">
               <Lock className="w-4 h-4 text-blue-200 shrink-0" />
@@ -158,7 +160,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. admin, user_c, user_a, user_b, user_d"
+                  placeholder="e.g. rfbsherlyn, rbilovely, maggie, marvin, michael"
                   className="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2C6FE0]/25 focus:border-[#2C6FE0]"
                   required
                 />
@@ -173,7 +175,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password"
+                  placeholder="Enter password (temporary = username on 1st login)"
                   className="w-full pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2C6FE0]/25 focus:border-[#2C6FE0]"
                   required
                 />
@@ -195,19 +197,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </button>
           </form>
 
-          {/* Expandable Demo Accounts Helper */}
+          {/* Expandable Authorized Accounts Directory (never exposes changed passwords) */}
           <div className="mt-6 border-t border-slate-100 dark:border-slate-800 pt-4">
             <button
               type="button"
               onClick={() => setShowDemo((v) => !v)}
               className="w-full flex items-center justify-between text-xs font-semibold text-[#123E82] dark:text-blue-300 hover:text-[#2C6FE0] dark:hover:text-blue-200 py-1 cursor-pointer"
             >
-              <span>View demo accounts ({demoUsers.length} multi-company roles)</span>
+              <span>View user accounts directory ({demoUsers.length} RFB &amp; RBI roles)</span>
               {showDemo ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
 
             {showDemo && (
-              <div className="mt-3 max-h-56 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="mt-3 max-h-60 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl divide-y divide-slate-100 dark:divide-slate-800">
                 {demoUsers.map((u) => (
                   <button
                     key={u.id}
@@ -217,14 +219,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   >
                     <div className="min-w-0">
                       <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
-                        {u.employeeName} · <span className="text-[#123E82] dark:text-blue-300">{u.roleLabel}</span>
+                        {u.employeeName} · <span className="text-[#123E82] dark:text-blue-300">{u.position}</span>
                       </div>
                       <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                        Assigned Companies: {u.companies.map((c) => c.code).join(' + ') || 'None'}
+                        {u.department} · Companies: {u.companies.map((c) => c.code).join(' + ') || 'None'}
                       </div>
                     </div>
-                    <div className="shrink-0 font-mono text-[11px] text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
-                      {u.username} / {u.passwordHint}
+                    <div className="shrink-0 text-right">
+                      <div className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                        {u.username}
+                      </div>
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                        {u.initialSetupTempMatchesUsername ? '1st-login temp PW' : 'Password set'}
+                      </div>
                     </div>
                   </button>
                 ))}

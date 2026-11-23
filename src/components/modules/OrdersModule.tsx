@@ -24,7 +24,7 @@ export const OrdersModule: React.FC<OrdersModuleProps> = ({
   const [drNo, setDrNo] = useState('');
   const [notes, setNotes] = useState('All items inspected and verified complete');
 
-  const canReceive = can('create_transactions') || can('edit_transactions');
+  const canReceive = can('process_transactions') || can('create_transactions') || can('edit_transactions');
   const docPrefix = (code: string) => (activeCompany.code === 'RFB' ? code : `${activeCompany.code}-${code}`);
 
   const openReceive = (po: PurchaseOrder) => {

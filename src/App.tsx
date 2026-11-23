@@ -12,6 +12,7 @@ import {
   FileBarChart2,
   FileCheck,
   FileSpreadsheet,
+  KeyRound,
   LayoutDashboard,
   Lock,
   LogOut,
@@ -25,6 +26,7 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
+import { ChangePasswordScreen } from './components/ChangePasswordScreen';
 import { CompanySelectScreen } from './components/CompanySelectScreen';
 import { LoginScreen } from './components/LoginScreen';
 import { PrintPreviewModal } from './components/PrintPreviewModal';
@@ -109,6 +111,7 @@ export default function App() {
   const [showNotifs, setShowNotifs] = useState(false);
   const [showCompanyMenu, setShowCompanyMenu] = useState(false);
   const [switchingCompany, setSwitchingCompany] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [syncError, setSyncError] = useState('');
 
   useEffect(() => {
@@ -449,18 +452,46 @@ export default function App() {
     );
   }
 
+  // Step 1B: Forced 1st-Login / Reset Password Change Gate
+  if (currentUser.mustChangePassword) {
+    return (
+      <ChangePasswordScreen
+        token={authToken}
+        user={currentUser}
+        forced={true}
+        onSuccess={(updated) => setCurrentUser(updated)}
+        onCancelOrLogout={handleLogout}
+      />
+    );
+  }
+
   // Step 2: Company Selection Gate
   if (!activeCompany || !activeAccess || !state) {
     return (
-      <CompanySelectScreen
-        user={currentUser}
-        employee={sessionEmployee}
-        availableCompanies={availableCompanies}
-        onSelectCompany={handleSelectCompany}
-        onLogout={handleLogout}
-        darkMode={darkMode}
-        onToggleDarkMode={toggleDarkMode}
-      />
+      <>
+        <CompanySelectScreen
+          user={currentUser}
+          employee={sessionEmployee}
+          availableCompanies={availableCompanies}
+          onSelectCompany={handleSelectCompany}
+          onOpenChangePassword={() => setShowChangePasswordModal(true)}
+          onLogout={handleLogout}
+          darkMode={darkMode}
+          onToggleDarkMode={toggleDarkMode}
+        />
+        {showChangePasswordModal && (
+          <ChangePasswordScreen
+            token={authToken}
+            user={currentUser}
+            forced={false}
+            onSuccess={(updated) => {
+              setCurrentUser(updated);
+              setShowChangePasswordModal(false);
+            }}
+            onCancelOrLogout={() => setShowChangePasswordModal(false)}
+          />
+        )}
+      </>
     );
   }
 
@@ -602,10 +633,27 @@ export default function App() {
         return (
           <MasterDataModule
             state={state}
+            authToken={authToken}
             currentUser={currentUser}
             activeCompany={activeCompany}
             can={can}
             onUpdateState={updateState}
+            onSyncServerState={(nextState) => {
+              stateRef.current = nextState;
+              setState(nextState);
+              const updatedSelf = nextState.users.find((u) => u.id === currentUser.id);
+              if (updatedSelf) {
+                setCurrentUser(updatedSelf);
+                if (updatedSelf.isAdmin) {
+                  setAvailableCompanies(nextState.companies.filter((c) => c.isActive));
+                } else {
+                  const assignedIds = new Set(updatedSelf.companyAccess.map((ca) => ca.companyId));
+                  setAvailableCompanies(
+                    nextState.companies.filter((c) => c.isActive && assignedIds.has(c.id))
+                  );
+                }
+              }
+            }}
           />
         );
     }
@@ -872,6 +920,17 @@ export default function App() {
                 )}
               </div>
 
+              {/* Self-Service Password Change */}
+              <button
+                type="button"
+                onClick={() => setShowChangePasswordModal(true)}
+                className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                aria-label="Change Password"
+                title="Change Password"
+              >
+                <KeyRound className="w-4 h-4" />
+              </button>
+
               {/* Dark / Light Theme Toggle */}
               <button
                 type="button"
@@ -977,6 +1036,20 @@ export default function App() {
           state={state}
           activeCompany={activeCompany}
           onClose={() => setPrintDoc(null)}
+        />
+      )}
+
+      {/* Voluntary Change Password Modal */}
+      {showChangePasswordModal && (
+        <ChangePasswordScreen
+          token={authToken}
+          user={currentUser}
+          forced={false}
+          onSuccess={(updated) => {
+            setCurrentUser(updated);
+            setShowChangePasswordModal(false);
+          }}
+          onCancelOrLogout={() => setShowChangePasswordModal(false)}
         />
       )}
     </div>

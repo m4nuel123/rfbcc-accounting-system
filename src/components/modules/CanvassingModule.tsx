@@ -43,7 +43,9 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
 
   const canCreate = can('create_transactions');
   const canEdit = can('edit_transactions');
-  const canModifyQuotes = canCreate || canEdit;
+  const canProcess = can('process_transactions') || canCreate;
+  const canModifyQuotes = canCreate || canEdit || canProcess;
+  const canPrint = can('print_documents') || can('export_reports') || canModifyQuotes;
   const docPrefix = (code: string) => (activeCompany.code === 'RFB' ? code : `${activeCompany.code}-${code}`);
 
   const activeCanvass = state.canvasses.find((c) => c.id === activeCanvassId) || null;
@@ -137,7 +139,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
   };
 
   const handleAutoAwardAndCreatePR = (cnv: Canvass) => {
-    if (!canCreate) return;
+    if (!canProcess) return;
     const req = state.requisitions.find((r) => r.id === cnv.reqId);
     if (!req) return;
 
@@ -240,13 +242,15 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
                   <td className="px-4 py-3 text-right font-mono text-slate-900 dark:text-slate-100 tabular-nums">{cnv.quotes.length}</td>
                   <td className="px-4 py-3"><StatusText status={cnv.status} /></td>
                   <td className="px-4 py-3 text-right whitespace-nowrap space-x-1.5">
-                    <button
-                      type="button"
-                      onClick={() => onOpenPrint({ kind: 'doc-slip', docType: 'Canvass', refId: cnv.id })}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg cursor-pointer"
-                    >
-                      <Printer className="w-3.5 h-3.5" /> Slip
-                    </button>
+                    {canPrint && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenPrint({ kind: 'doc-slip', docType: 'Canvass', refId: cnv.id })}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg cursor-pointer"
+                      >
+                        <Printer className="w-3.5 h-3.5" /> Slip
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => openCanvassModal(cnv)}
@@ -453,7 +457,7 @@ export const CanvassingModule: React.FC<CanvassingModuleProps> = ({
                 })}
               </div>
 
-              {activeCanvass.status === 'Open' && canCreate && (
+              {activeCanvass.status === 'Open' && canProcess && (
                 <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
                   <span className="text-xs text-slate-500 dark:text-slate-400">
                     Each requested item requires at least 1 quote before generating Purchase Request.

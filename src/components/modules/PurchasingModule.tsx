@@ -33,7 +33,10 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
   const [rejectReason, setRejectReason] = useState('');
 
   const canApprove = can('approve_transactions');
+  const canReject = can('reject_transactions') || canApprove;
   const canCreate = can('create_transactions');
+  const canProcess = can('process_transactions') || canCreate;
+  const canPrint = can('print_documents') || can('export_reports') || canApprove || canCreate;
   const docPrefix = (code: string) => (activeCompany.code === 'RFB' ? code : `${activeCompany.code}-${code}`);
 
   const advanceSignatory = (pr: PurchaseRequest) => {
@@ -65,7 +68,7 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
 
   const handleReject = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canApprove || !rejectPrId) return;
+    if (!canReject || !rejectPrId) return;
     onUpdateState((prev) => ({
       ...prev,
       purchaseRequests: prev.purchaseRequests.map((p) =>
@@ -79,7 +82,7 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
   };
 
   const handleGeneratePO = (pr: PurchaseRequest) => {
-    if (!canCreate || pr.status !== 'Approved') return;
+    if (!canProcess || pr.status !== 'Approved') return;
     const bySupplier = new Map<string, typeof pr.items>();
     for (const it of pr.items) {
       const list = bySupplier.get(it.supplierId) || [];
@@ -209,7 +212,7 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
                       <Check className="w-3.5 h-3.5" /> Final Approve
                     </button>
                   )}
-                  {canApprove &&
+                  {canReject &&
                     (pr.status === 'Pending Note' ||
                       pr.status === 'For Recommending Approval' ||
                       pr.status === 'For Final Approval') && (
@@ -222,7 +225,7 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
                     </button>
                   )}
 
-                  {canCreate && pr.status === 'Approved' && (
+                  {canProcess && pr.status === 'Approved' && (
                     <button
                       type="button"
                       onClick={() => handleGeneratePO(pr)}
@@ -232,7 +235,7 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
                     </button>
                   )}
 
-                  {isPrintable && (
+                  {isPrintable && canPrint && (
                     <button
                       type="button"
                       onClick={() => onOpenPrint({ kind: 'pr', prId: pr.id })}
@@ -276,7 +279,7 @@ export const PurchasingModule: React.FC<PurchasingModuleProps> = ({
       </div>
 
       {/* Reject Reason Modal */}
-      {rejectPrId && canApprove && (
+      {rejectPrId && canReject && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
           <form onSubmit={handleReject} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl w-full max-w-md p-6 space-y-4">
             <h3 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Reject Purchase Request</h3>

@@ -1,4 +1,12 @@
-import { ERPState, LoginResponse, SelectCompanyResponse } from '../types/erp';
+import {
+  AccountStatus,
+  EmploymentStatus,
+  ERPState,
+  LoginResponse,
+  SafeUserAccount,
+  SelectCompanyResponse,
+  UserCompanyAccess,
+} from '../types/erp';
 
 const API_BASE = '/api';
 
@@ -30,10 +38,13 @@ async function apiFetch<T>(
 export interface DemoDirectoryEntry {
   id: string;
   username: string;
-  passwordHint: string;
   employeeName: string;
+  department: string;
+  position: string;
   roleLabel: string;
   isAdmin: boolean;
+  mustChangePassword?: boolean;
+  initialSetupTempMatchesUsername?: boolean;
   companies: { id: string; code: string; name: string }[];
 }
 
@@ -47,6 +58,20 @@ export async function apiLogin(username: string, password: string): Promise<Logi
     method: 'POST',
     body: JSON.stringify({ username, password }),
   });
+}
+
+export async function apiChangePassword(
+  token: string,
+  payload: { currentPassword: string; newPassword: string; confirmPassword: string }
+): Promise<{ ok: boolean; user: SafeUserAccount }> {
+  return apiFetch<{ ok: boolean; user: SafeUserAccount }>(
+    '/auth/change-password',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    token
+  );
 }
 
 export async function apiSelectCompany(
@@ -81,6 +106,98 @@ export async function apiCommitState(token: string, state: ERPState): Promise<{ 
     {
       method: 'POST',
       body: JSON.stringify({ state }),
+    },
+    token
+  );
+}
+
+export interface AdminUserUpsertPayload {
+  username: string;
+  temporaryPassword?: string;
+  employeeCode: string;
+  fullName: string;
+  department: string;
+  position: string;
+  employeeId?: string;
+  roleLabel: string;
+  isAdmin: boolean;
+  accountStatus: AccountStatus;
+  employmentStatus: EmploymentStatus;
+  mustChangePassword?: boolean;
+  companyAccess: UserCompanyAccess[];
+}
+
+export async function apiAdminCreateUser(
+  token: string,
+  payload: AdminUserUpsertPayload
+): Promise<{ ok: boolean; user: SafeUserAccount; state: ERPState }> {
+  return apiFetch<{ ok: boolean; user: SafeUserAccount; state: ERPState }>(
+    '/erp/users',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    token
+  );
+}
+
+export async function apiAdminUpdateUser(
+  token: string,
+  userId: string,
+  payload: Partial<AdminUserUpsertPayload>
+): Promise<{ ok: boolean; user: SafeUserAccount; state: ERPState }> {
+  return apiFetch<{ ok: boolean; user: SafeUserAccount; state: ERPState }>(
+    `/erp/users/${encodeURIComponent(userId)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    },
+    token
+  );
+}
+
+export async function apiAdminResetPassword(
+  token: string,
+  userId: string,
+  payload: { temporaryPassword?: string; generateRandom?: boolean; forceChange?: boolean }
+): Promise<{ ok: boolean; temporaryPassword: string; user: SafeUserAccount; state: ERPState }> {
+  return apiFetch<{ ok: boolean; temporaryPassword: string; user: SafeUserAccount; state: ERPState }>(
+    `/erp/users/${encodeURIComponent(userId)}/reset-password`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    token
+  );
+}
+
+export async function apiAdminUpdateUserStatus(
+  token: string,
+  userId: string,
+  payload: {
+    accountStatus: AccountStatus;
+    employmentStatus?: EmploymentStatus;
+    clearCompanyAccess?: boolean;
+  }
+): Promise<{ ok: boolean; user: SafeUserAccount; state: ERPState }> {
+  return apiFetch<{ ok: boolean; user: SafeUserAccount; state: ERPState }>(
+    `/erp/users/${encodeURIComponent(userId)}/status`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    token
+  );
+}
+
+export async function apiAdminDeleteUser(
+  token: string,
+  userId: string
+): Promise<{ ok: boolean; state: ERPState }> {
+  return apiFetch<{ ok: boolean; state: ERPState }>(
+    `/erp/users/${encodeURIComponent(userId)}`,
+    {
+      method: 'DELETE',
     },
     token
   );

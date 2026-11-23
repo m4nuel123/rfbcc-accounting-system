@@ -69,8 +69,10 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
   const [salvageValue, setSalvageValue] = useState('0');
 
   const canCreate = can('create_transactions');
-  const canEdit = can('edit_transactions') || canCreate;
+  const canEdit = can('edit_transactions') || can('process_transactions') || canCreate;
   const canApprove = can('approve_transactions');
+  const canReject = can('reject_transactions') || canApprove;
+  const canPrint = can('print_documents') || can('export_reports') || canEdit || canApprove;
   const docPrefix = (code: string) => (activeCompany.code === 'RFB' ? code : `${activeCompany.code}-${code}`);
 
   const today = todayISO();
@@ -174,7 +176,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
   };
 
   const handleApproveBorrow = (br: BorrowRequest, approve: boolean) => {
-    if (!canApprove) return;
+    if (approve ? !canApprove : !canReject) return;
     onUpdateState((prev) => ({
       ...prev,
       borrowRequests: prev.borrowRequests.map((b) =>
@@ -491,22 +493,22 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                     <td className="px-4 py-3"><StatusText status={br.status} /></td>
                     <td className="px-4 py-3 text-right whitespace-nowrap space-x-1.5">
                       {canApprove && br.status === 'Pending Approval' && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => handleApproveBorrow(br, true)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer"
-                          >
-                            <Check className="w-3.5 h-3.5" /> Approve
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleApproveBorrow(br, false)}
-                            className="px-2.5 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/60 hover:bg-red-100 dark:hover:bg-red-900/60 rounded-lg cursor-pointer"
-                          >
-                            Reject
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          onClick={() => handleApproveBorrow(br, true)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Approve
+                        </button>
+                      )}
+                      {canReject && br.status === 'Pending Approval' && (
+                        <button
+                          type="button"
+                          onClick={() => handleApproveBorrow(br, false)}
+                          className="px-2.5 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/60 hover:bg-red-100 dark:hover:bg-red-900/60 rounded-lg cursor-pointer"
+                        >
+                          Reject
+                        </button>
                       )}
                       {canEdit && br.status === 'Approved' && (
                         <button
@@ -530,7 +532,7 @@ export const ToolsModule: React.FC<ToolsModuleProps> = ({
                           <RotateCcw className="w-3.5 h-3.5" /> Process Return
                         </button>
                       )}
-                      {isPrintable && (
+                      {isPrintable && canPrint && (
                         <button
                           type="button"
                           onClick={() => onOpenPrint({ kind: 'borrower-slip', borrowId: br.id })}

@@ -36,7 +36,8 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
 
   const canCreate = can('create_transactions');
   const canApprove = can('approve_transactions');
-  const canPay = can('create_transactions') || can('edit_transactions');
+  const canReject = can('reject_transactions') || can('delete_transactions') || canApprove;
+  const canPay = can('process_transactions') || can('create_transactions') || can('edit_transactions');
   const docPrefix = (code: string) => (activeCompany.code === 'RFB' ? code : `${activeCompany.code}-${code}`);
 
   // RRs that don't yet have an active (non-cancelled) DV
@@ -117,7 +118,7 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
   };
 
   const handleCancelDV = (dvId: string) => {
-    if (!canApprove) return;
+    if (!canReject) return;
     onUpdateState((prev) => ({
       ...prev,
       vouchers: prev.vouchers.map((v) =>
@@ -250,22 +251,22 @@ export const VouchersModule: React.FC<VouchersModuleProps> = ({
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap space-x-1.5">
                   {canApprove && dv.status === 'Pending Approval' && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleApproveDV(dv.id)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer"
-                      >
-                        <Check className="w-3.5 h-3.5" /> Approve
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleCancelDV(dv.id)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/60 hover:bg-red-100 dark:hover:bg-red-900/60 rounded-lg cursor-pointer"
-                      >
-                        <XCircle className="w-3.5 h-3.5" /> Cancel
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => handleApproveDV(dv.id)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold brand-btn-primary rounded-lg cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5" /> Approve
+                    </button>
+                  )}
+                  {canReject && dv.status === 'Pending Approval' && (
+                    <button
+                      type="button"
+                      onClick={() => handleCancelDV(dv.id)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/60 hover:bg-red-100 dark:hover:bg-red-900/60 rounded-lg cursor-pointer"
+                    >
+                      <XCircle className="w-3.5 h-3.5" /> Cancel
+                    </button>
                   )}
                   {canPay && dv.status === 'Approved' && (
                     <button

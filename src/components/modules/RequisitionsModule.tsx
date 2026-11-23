@@ -53,6 +53,8 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
   const [duplicateMatches, setDuplicateMatches] = useState<Requisition[] | null>(null);
 
   const canCreate = can('create_transactions');
+  const canSubmit = can('submit_transactions') || can('process_transactions') || canCreate;
+  const canPrint = can('print_documents') || can('export_reports') || canCreate;
   const docPrefix = (code: string) => (activeCompany.code === 'RFB' ? code : `${activeCompany.code}-${code}`);
 
   const handleSelectMaterial = (rowIdx: number, val: string) => {
@@ -172,7 +174,7 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
   };
 
   const handleOpenCanvass = (req: Requisition) => {
-    if (!canCreate) return;
+    if (!canSubmit) return;
     const alreadyExists = state.canvasses.some((c) => c.reqId === req.id);
     if (alreadyExists) return;
     const canvassNo = nextCode(
@@ -301,17 +303,19 @@ export const RequisitionsModule: React.FC<RequisitionsModuleProps> = ({
                     <StatusText status={req.status} />
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap space-x-1.5">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onOpenPrint({ kind: 'doc-slip', docType: 'Requisition', refId: req.id })
-                      }
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg cursor-pointer"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      Slip
-                    </button>
-                    {canCreate && !hasCanvass && req.status !== 'Cancelled' && (
+                    {canPrint && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onOpenPrint({ kind: 'doc-slip', docType: 'Requisition', refId: req.id })
+                        }
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg cursor-pointer"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        Slip
+                      </button>
+                    )}
+                    {canSubmit && !hasCanvass && req.status !== 'Cancelled' && (
                       <button
                         type="button"
                         onClick={() => handleOpenCanvass(req)}

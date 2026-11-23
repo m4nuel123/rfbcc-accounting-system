@@ -3,8 +3,10 @@ import fs from 'fs';
 import path from 'path';
 import express, { Request, Response, NextFunction } from 'express';
 import {
+  AccountStatus,
   AuditLogEntry,
   Company,
+  EmploymentStatus,
   ERPState,
   ModuleId,
   PermissionId,
@@ -18,8 +20,11 @@ import {
   INITIAL_ERP_STATE,
 } from '../src/utils/erpConfig';
 
-const SESSION_SECRET = process.env.ERP_SESSION_SECRET || 'rfb-rbi-erp-hmac-secret-2026';
+const SESSION_SECRET = process.env.ERP_SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const DB_FILE_PATH = process.env.VERCEL
+  ? '/tmp/rfb-rbi-erp-db-v3.json'
+  : path.join(process.cwd(), '.data', 'erp-db-v3.json');
+const LEGACY_DB_FILE_PATH = process.env.VERCEL
   ? '/tmp/rfb-rbi-erp-db-v2.json'
   : path.join(process.cwd(), '.data', 'erp-db-v2.json');
 
@@ -27,6 +32,7 @@ interface SessionPayload {
   sid: string;
   uid: string;
   cid: string | null;
+  iat: number;
   exp: number;
 }
 
@@ -38,6 +44,7 @@ interface AuthedRequest extends Request {
 }
 
 const revokedSessionIds = new Set<string>();
+const userInvalidatedBefore = new Map<string, number>();
 
 function nowTimestamp(): string {
   const d = new Date();
@@ -45,8 +52,69 @@ function nowTimestamp(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
+function todayISO(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function hashPassword(plain: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const derived = crypto.scryptSync(plain, salt, 64, { N: 16384, r: 8, p: 1 }).toString('hex');
+  return `scrypt$${salt}$${derived}`;
+}
+
+function verifyPassword(plain: string, storedHash?: string): boolean {
+  if (!storedHash || typeof storedHash !== 'string') return false;
+  const parts = storedHash.split('$');
+  if (parts.length !== 3 || parts[0] !== 'scrypt') return false;
+  const [, salt, expectedHex] = parts;
+  if (!salt || !expectedHex) return false;
+  try {
+    const derived = crypto.scryptSync(plain, salt, 64, { N: 16384, r: 8, p: 1 });
+    const expected = Buffer.from(expectedHex, 'hex');
+    if (derived.length !== expected.length) return false;
+    return crypto.timingSafeEqual(derived, expected);
+  } catch {
+    return false;
+  }
+}
+
+function normalizeUserRecord(raw: UserAccount): UserAccount {
+  const passwordHash =
+    raw.passwordHash && raw.passwordHash.startsWith('scrypt$')
+      ? raw.passwordHash
+      : hashPassword(raw.password || raw.username);
+
+  return {
+    id: raw.id,
+    username: raw.username,
+    passwordHash,
+    employeeCode: raw.employeeCode || `EMP-${raw.username.toUpperCase().slice(0, 6)}`,
+    fullName: raw.fullName || raw.username,
+    department: raw.department || 'Operations',
+    position: raw.position || raw.roleLabel || 'Staff',
+    employeeId: raw.employeeId || '',
+    roleLabel: raw.roleLabel || raw.position || 'Staff',
+    isAdmin: Boolean(raw.isAdmin),
+    accountStatus: raw.accountStatus || 'Active',
+    employmentStatus: raw.employmentStatus || 'Regular',
+    mustChangePassword: Boolean(raw.mustChangePassword),
+    dateCreated: raw.dateCreated || todayISO(),
+    lastLogin: raw.lastLogin,
+    createdBy: raw.createdBy || 'System Setup',
+    updatedBy: raw.updatedBy || 'System Setup',
+    updatedAt: raw.updatedAt,
+    passwordUpdatedAt: raw.passwordUpdatedAt,
+    allowedModules: Array.isArray(raw.allowedModules) ? raw.allowedModules : [],
+    companyAccess: Array.isArray(raw.companyAccess) ? raw.companyAccess : [],
+  };
+}
+
 function cloneInitialState(): ERPState {
-  return JSON.parse(JSON.stringify(INITIAL_ERP_STATE)) as ERPState;
+  const seed = JSON.parse(JSON.stringify(INITIAL_ERP_STATE)) as ERPState;
+  seed.users = seed.users.map(normalizeUserRecord);
+  return seed;
 }
 
 function loadDatabase(): ERPState {
@@ -55,15 +123,40 @@ function loadDatabase(): ERPState {
       const raw = fs.readFileSync(DB_FILE_PATH, 'utf8');
       const parsed = JSON.parse(raw) as Partial<ERPState>;
       if (parsed && Array.isArray(parsed.companies) && Array.isArray(parsed.users) && parsed.companies.length >= 2) {
+        const base = cloneInitialState();
         return {
-          ...cloneInitialState(),
+          ...base,
           ...parsed,
-          auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : cloneInitialState().auditLogs,
+          users: parsed.users.map(normalizeUserRecord),
+          auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : base.auditLogs,
+        };
+      }
+    }
+
+    // Preserve existing business transactions from v2 if upgrading for the first time
+    if (fs.existsSync(LEGACY_DB_FILE_PATH)) {
+      const rawLegacy = fs.readFileSync(LEGACY_DB_FILE_PATH, 'utf8');
+      const parsedLegacy = JSON.parse(rawLegacy) as Partial<ERPState>;
+      if (parsedLegacy && Array.isArray(parsedLegacy.companies) && parsedLegacy.companies.length >= 2) {
+        const base = cloneInitialState();
+        const existingEmpIds = new Set(base.employees.map((e) => e.id));
+        const mergedEmployees = [
+          ...base.employees,
+          ...(Array.isArray(parsedLegacy.employees)
+            ? parsedLegacy.employees.filter((e) => !existingEmpIds.has(e.id))
+            : []),
+        ];
+        return {
+          ...base,
+          ...parsedLegacy,
+          employees: mergedEmployees,
+          users: base.users,
+          auditLogs: Array.isArray(parsedLegacy.auditLogs) ? parsedLegacy.auditLogs : base.auditLogs,
         };
       }
     }
   } catch {
-    // Fallback to clean seed if corrupted
+    // Fallback to clean seed
   }
   return cloneInitialState();
 }
@@ -93,11 +186,14 @@ function verifyToken(token: string): SessionPayload | null {
   if (parts.length !== 2) return null;
   const [body, sig] = parts;
   const expected = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
+  if (sig.length !== expected.length) return null;
   if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
   try {
     const parsed = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as SessionPayload;
     if (!parsed.uid || !parsed.exp || Date.now() > parsed.exp) return null;
     if (revokedSessionIds.has(parsed.sid)) return null;
+    const minIat = userInvalidatedBefore.get(parsed.uid);
+    if (minIat && (parsed.iat || 0) < minIat) return null;
     return parsed;
   } catch {
     return null;
@@ -108,21 +204,35 @@ function sanitizeUser(u: UserAccount): SafeUserAccount {
   return {
     id: u.id,
     username: u.username,
+    employeeCode: u.employeeCode,
+    fullName: u.fullName,
+    department: u.department,
+    position: u.position,
     employeeId: u.employeeId,
     roleLabel: u.roleLabel,
     isAdmin: u.isAdmin,
+    accountStatus: u.accountStatus,
+    employmentStatus: u.employmentStatus,
+    mustChangePassword: u.mustChangePassword,
+    dateCreated: u.dateCreated,
+    lastLogin: u.lastLogin,
+    createdBy: u.createdBy,
+    updatedBy: u.updatedBy,
+    updatedAt: u.updatedAt,
+    passwordUpdatedAt: u.passwordUpdatedAt,
     allowedModules: u.allowedModules,
     companyAccess: u.companyAccess,
   };
 }
 
 function getEffectiveAccess(user: UserAccount, companyId: string): UserCompanyAccess | null {
+  if (user.accountStatus !== 'Active') return null;
   const assigned = user.companyAccess.find((a) => a.companyId === companyId);
   if (user.isAdmin) {
     return (
       assigned || {
         companyId,
-        roleLabel: user.roleLabel || 'Administrator',
+        roleLabel: user.roleLabel || 'System Administrator',
         allowedModules: ALL_MODULE_IDS,
         permissions: ALL_PERMISSION_IDS,
       }
@@ -132,6 +242,7 @@ function getEffectiveAccess(user: UserAccount, companyId: string): UserCompanyAc
 }
 
 function getAssignedCompanies(user: UserAccount): Company[] {
+  if (user.accountStatus !== 'Active') return [];
   if (user.isAdmin) {
     return db.companies.filter((c) => c.isActive);
   }
@@ -160,7 +271,7 @@ function appendAudit(
     id: `aud-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     userId: user.id,
     username: user.username,
-    userName: emp?.name || user.username,
+    userName: user.fullName || emp?.name || user.username,
     companyId: company?.id || 'system',
     companyCode: company?.code || 'SYS',
     companyName: company?.name || 'Central Auth',
@@ -170,7 +281,7 @@ function appendAudit(
     details,
     timestamp: nowTimestamp(),
   };
-  db.auditLogs = [entry, ...db.auditLogs].slice(0, 500);
+  db.auditLogs = [entry, ...db.auditLogs].slice(0, 600);
 }
 
 function buildCompanyScopedState(user: UserAccount, access: UserCompanyAccess, companyId: string): ERPState {
@@ -178,10 +289,7 @@ function buildCompanyScopedState(user: UserAccount, access: UserCompanyAccess, c
   const canManageCompanies = hasPerm(access, user, 'manage_companies');
 
   const safeUsers: UserAccount[] = canManageUsers
-    ? db.users.map((u) => ({
-        ...u,
-        password: '••••••••',
-      }))
+    ? db.users.map((u) => sanitizeUser(u) as UserAccount)
     : [];
 
   return {
@@ -204,7 +312,7 @@ function buildCompanyScopedState(user: UserAccount, access: UserCompanyAccess, c
     toolAuditLogs: db.toolAuditLogs.filter((r) => r.companyId === companyId),
     repairRecords: db.repairRecords.filter((r) => r.companyId === companyId),
     disposalRecords: db.disposalRecords.filter((r) => r.companyId === companyId),
-    auditLogs: db.auditLogs.filter((r) => r.companyId === companyId),
+    auditLogs: db.auditLogs.filter((r) => r.companyId === companyId || (user.isAdmin && r.companyId === 'system')),
   };
 }
 
@@ -225,6 +333,12 @@ function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
     res.status(401).json({ error: 'Account no longer exists' });
     return;
   }
+  if (user.accountStatus !== 'Active') {
+    res.status(403).json({
+      error: `Account is ${user.accountStatus}. Access disabled; contact a System Administrator.`,
+    });
+    return;
+  }
   req.session = session;
   req.user = user;
   next();
@@ -233,6 +347,10 @@ function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
 function requireActiveCompany(req: AuthedRequest, res: Response, next: NextFunction) {
   if (!req.session || !req.user) {
     res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+  if (req.user.mustChangePassword) {
+    res.status(403).json({ error: 'Password change required before accessing company workspaces.' });
     return;
   }
   const companyId = req.session.cid;
@@ -253,6 +371,16 @@ function requireActiveCompany(req: AuthedRequest, res: Response, next: NextFunct
   req.activeCompany = company;
   req.activeAccess = access;
   next();
+}
+
+function generateTempPassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+  const bytes = crypto.randomBytes(10);
+  let out = '';
+  for (let i = 0; i < bytes.length; i++) {
+    out += chars[bytes[i] % chars.length];
+  }
+  return out;
 }
 
 type ScopedCollectionKey =
@@ -322,24 +450,31 @@ export function createErpBackendRouter() {
   router.use(express.json({ limit: '6mb' }));
 
   router.get('/health', (_req, res) => {
-    res.json({ ok: true, companies: db.companies.length, timestamp: nowTimestamp() });
+    res.json({ ok: true, companies: db.companies.length, users: db.users.length, timestamp: nowTimestamp() });
   });
 
-  // Public demo catalog for LoginScreen quick-fill helper (returns non-sensitive usernames/roles/companies only)
+  // Public account directory for LoginScreen helper — NEVER exposes real or changed passwords
   router.get('/auth/demo-directory', (_req, res) => {
-    const directory = db.users.map((u) => {
-      const emp = db.employees.find((e) => e.id === u.employeeId);
-      const companies = getAssignedCompanies(u).map((c) => ({ id: c.id, code: c.code, name: c.name }));
-      return {
-        id: u.id,
-        username: u.username,
-        passwordHint: u.password,
-        employeeName: emp?.name || u.username,
-        roleLabel: u.roleLabel,
-        isAdmin: u.isAdmin,
-        companies,
-      };
-    });
+    const directory = db.users
+      .filter((u) => u.accountStatus === 'Active')
+      .map((u) => {
+        const emp = db.employees.find((e) => e.id === u.employeeId);
+        const companies = getAssignedCompanies(u).map((c) => ({ id: c.id, code: c.code, name: c.name }));
+        // Only surface username hint when temporary initial setup password still matches username
+        const initialSetupOnly = Boolean(u.mustChangePassword && verifyPassword(u.username, u.passwordHash));
+        return {
+          id: u.id,
+          username: u.username,
+          employeeName: u.fullName || emp?.name || u.username,
+          department: u.department,
+          position: u.position,
+          roleLabel: u.roleLabel,
+          isAdmin: u.isAdmin,
+          mustChangePassword: u.mustChangePassword,
+          initialSetupTempMatchesUsername: initialSetupOnly,
+          companies,
+        };
+      });
     res.json({ users: directory });
   });
 
@@ -351,10 +486,25 @@ export function createErpBackendRouter() {
     }
 
     const found = db.users.find(
-      (u) => u.username.toLowerCase() === username.trim().toLowerCase() && u.password === password
+      (u) => u.username.toLowerCase() === username.trim().toLowerCase()
     );
-    if (!found) {
+    if (!found || !verifyPassword(password, found.passwordHash)) {
       res.status(401).json({ error: 'Invalid username or password.' });
+      return;
+    }
+
+    if (found.accountStatus !== 'Active') {
+      appendAudit(
+        found,
+        null,
+        'Blocked Login Attempt',
+        'auth',
+        `Login denied because account status is ${found.accountStatus}`
+      );
+      persistDatabase();
+      res.status(403).json({
+        error: `This account is currently ${found.accountStatus}. Please contact a System Administrator.`,
+      });
       return;
     }
 
@@ -364,11 +514,14 @@ export function createErpBackendRouter() {
       return;
     }
 
+    found.lastLogin = nowTimestamp();
+
     const sid = crypto.randomBytes(16).toString('hex');
     const token = signToken({
       sid,
       uid: found.id,
       cid: null,
+      iat: Date.now(),
       exp: Date.now() + 12 * 60 * 60 * 1000,
     });
 
@@ -378,7 +531,9 @@ export function createErpBackendRouter() {
       null,
       'User Login',
       'auth',
-      `Authenticated centralized session (${availableCompanies.map((c) => c.code).join(', ')} assigned)`
+      `Authenticated centralized session (${availableCompanies.map((c) => c.code).join(', ')} assigned)${
+        found.mustChangePassword ? ' · password change required' : ''
+      }`
     );
     persistDatabase();
 
@@ -387,6 +542,63 @@ export function createErpBackendRouter() {
       user: sanitizeUser(found),
       availableCompanies,
       employee: emp,
+      mustChangePassword: Boolean(found.mustChangePassword),
+    });
+  });
+
+  // Self-service or forced first-login password change
+  router.post('/auth/change-password', requireAuth, (req: AuthedRequest, res: Response) => {
+    const user = req.user!;
+    const { currentPassword, newPassword, confirmPassword } = req.body as {
+      currentPassword?: string;
+      newPassword?: string;
+      confirmPassword?: string;
+    };
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      res.status(400).json({ error: 'Current password, new password, and confirmation are required.' });
+      return;
+    }
+    if (!verifyPassword(currentPassword, user.passwordHash)) {
+      res.status(401).json({ error: 'Current password is incorrect.' });
+      return;
+    }
+    if (newPassword.length < 8) {
+      res.status(400).json({ error: 'New password must be at least 8 characters long.' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      res.status(400).json({ error: 'New password and confirmation do not match.' });
+      return;
+    }
+    if (newPassword.toLowerCase() === user.username.toLowerCase()) {
+      res.status(400).json({ error: 'New password cannot be the same as your username.' });
+      return;
+    }
+    if (verifyPassword(newPassword, user.passwordHash)) {
+      res.status(400).json({ error: 'New password must be different from your temporary/current password.' });
+      return;
+    }
+
+    user.passwordHash = hashPassword(newPassword);
+    user.mustChangePassword = false;
+    user.passwordUpdatedAt = nowTimestamp();
+    user.updatedBy = user.username;
+    user.updatedAt = nowTimestamp();
+
+    const comp = req.session?.cid ? db.companies.find((c) => c.id === req.session!.cid) || null : null;
+    appendAudit(
+      user,
+      comp,
+      'Password Changed',
+      'auth',
+      `User ${user.username} updated their password cleanly`
+    );
+    persistDatabase();
+
+    res.json({
+      ok: true,
+      user: sanitizeUser(user),
     });
   });
 
@@ -394,6 +606,11 @@ export function createErpBackendRouter() {
     const user = req.user!;
     const session = req.session!;
     const { companyId } = req.body as { companyId?: string };
+
+    if (user.mustChangePassword) {
+      res.status(403).json({ error: 'You must change your temporary password before entering a company workspace.' });
+      return;
+    }
 
     if (!companyId) {
       res.status(400).json({ error: 'companyId is required.' });
@@ -426,6 +643,7 @@ export function createErpBackendRouter() {
       sid: session.sid,
       uid: user.id,
       cid: companyId,
+      iat: session.iat || Date.now(),
       exp: Date.now() + 12 * 60 * 60 * 1000,
     });
 
@@ -473,7 +691,373 @@ export function createErpBackendRouter() {
   router.get('/erp/audit-logs', requireAuth, requireActiveCompany, (req: AuthedRequest, res: Response) => {
     const companyId = req.activeCompany!.id;
     res.json({
-      auditLogs: db.auditLogs.filter((l) => l.companyId === companyId),
+      auditLogs: db.auditLogs.filter(
+        (l) => l.companyId === companyId || (req.user!.isAdmin && l.companyId === 'system')
+      ),
+    });
+  });
+
+  // =========================================================================
+  // ADMIN USER MANAGEMENT, RBAC & PASSWORD ADMINISTRATION ENDPOINTS
+  // =========================================================================
+  router.post('/erp/users', requireAuth, requireActiveCompany, (req: AuthedRequest, res: Response) => {
+    const actor = req.user!;
+    const access = req.activeAccess!;
+    const company = req.activeCompany!;
+
+    if (!hasPerm(access, actor, 'manage_users')) {
+      res.status(403).json({ error: 'Forbidden: Missing manage_users permission.' });
+      return;
+    }
+
+    const body = req.body as Partial<UserAccount> & { temporaryPassword?: string };
+    const username = (body.username || '').trim().toLowerCase();
+    const fullName = (body.fullName || '').trim();
+    const tempPass = (body.temporaryPassword || body.password || '').trim();
+
+    if (!username || !fullName || !tempPass) {
+      res.status(400).json({ error: 'Username, Employee Name, and Temporary Password are required.' });
+      return;
+    }
+    if (tempPass.length < 6) {
+      res.status(400).json({ error: 'Temporary password must be at least 6 characters.' });
+      return;
+    }
+    if (db.users.some((u) => u.username.toLowerCase() === username)) {
+      res.status(409).json({ error: `Username "${username}" already exists.` });
+      return;
+    }
+
+    const isAdmin = Boolean(body.isAdmin);
+    const companyAccess: UserCompanyAccess[] = isAdmin
+      ? db.companies.map((c) => ({
+          companyId: c.id,
+          roleLabel: body.roleLabel?.trim() || 'System Administrator',
+          allowedModules: ALL_MODULE_IDS,
+          permissions: ALL_PERMISSION_IDS,
+        }))
+      : Array.isArray(body.companyAccess)
+        ? body.companyAccess
+        : [];
+
+    if (!isAdmin && companyAccess.length === 0) {
+      res.status(400).json({ error: 'Assign at least one company (RFB, RBI, or both).' });
+      return;
+    }
+
+    let employeeId = (body.employeeId || '').trim();
+    if (!employeeId) {
+      const targetCompanyId = companyAccess[0]?.companyId || company.id;
+      const empId = `emp-${Date.now()}`;
+      const targetComp = db.companies.find((c) => c.id === targetCompanyId) || company;
+      const domain = targetComp.email.split('@')[1] || 'rfbconstruction.ph';
+      db.employees.push({
+        id: empId,
+        companyId: targetCompanyId,
+        name: fullName,
+        position: body.position?.trim() || body.roleLabel?.trim() || 'Staff',
+        department: body.department?.trim() || 'Operations',
+        email: `${username}@${domain}`,
+      });
+      employeeId = empId;
+    }
+
+    const mergedModules = Array.from(new Set(companyAccess.flatMap((a) => a.allowedModules)));
+    const created: UserAccount = {
+      id: `usr-${Date.now()}`,
+      username,
+      passwordHash: hashPassword(tempPass),
+      employeeCode: (body.employeeCode || '').trim() || `EMP-${username.toUpperCase().slice(0, 6)}`,
+      fullName,
+      department: (body.department || '').trim() || 'Operations',
+      position: (body.position || '').trim() || body.roleLabel?.trim() || 'Staff',
+      employeeId,
+      roleLabel: (body.roleLabel || '').trim() || (body.position || '').trim() || 'Staff',
+      isAdmin,
+      accountStatus: (body.accountStatus as AccountStatus) || 'Active',
+      employmentStatus: (body.employmentStatus as EmploymentStatus) || 'Regular',
+      mustChangePassword: body.mustChangePassword !== false,
+      dateCreated: todayISO(),
+      createdBy: actor.username,
+      updatedBy: actor.username,
+      updatedAt: nowTimestamp(),
+      allowedModules: isAdmin ? ALL_MODULE_IDS : mergedModules,
+      companyAccess,
+    };
+
+    db.users.push(created);
+    appendAudit(
+      actor,
+      company,
+      'Created User Account',
+      'masterData',
+      `Created user ${created.username} (${created.fullName} · ${created.companyAccess
+        .map((a) => db.companies.find((c) => c.id === a.companyId)?.code || a.companyId)
+        .join(' + ')})`,
+      created.username
+    );
+    persistDatabase();
+
+    res.status(201).json({
+      ok: true,
+      user: sanitizeUser(created),
+      state: buildCompanyScopedState(actor, access, company.id),
+    });
+  });
+
+  router.put('/erp/users/:id', requireAuth, requireActiveCompany, (req: AuthedRequest, res: Response) => {
+    const actor = req.user!;
+    const access = req.activeAccess!;
+    const company = req.activeCompany!;
+
+    if (!hasPerm(access, actor, 'manage_users')) {
+      res.status(403).json({ error: 'Forbidden: Missing manage_users permission.' });
+      return;
+    }
+
+    const target = db.users.find((u) => u.id === req.params.id);
+    if (!target) {
+      res.status(404).json({ error: 'User account not found.' });
+      return;
+    }
+
+    const body = req.body as Partial<UserAccount>;
+    const nextUsername = body.username ? body.username.trim().toLowerCase() : target.username;
+    if (
+      nextUsername !== target.username &&
+      db.users.some((u) => u.id !== target.id && u.username.toLowerCase() === nextUsername)
+    ) {
+      res.status(409).json({ error: `Username "${nextUsername}" is already taken.` });
+      return;
+    }
+
+    const isAdmin = body.isAdmin !== undefined ? Boolean(body.isAdmin) : target.isAdmin;
+    if (target.id === actor.id && !isAdmin && actor.isAdmin) {
+      res.status(400).json({ error: 'Cannot remove System Administrator privileges from your own active session.' });
+      return;
+    }
+
+    const companyAccess: UserCompanyAccess[] = isAdmin
+      ? db.companies.map((c) => ({
+          companyId: c.id,
+          roleLabel: body.roleLabel?.trim() || target.roleLabel || 'System Administrator',
+          allowedModules: ALL_MODULE_IDS,
+          permissions: ALL_PERMISSION_IDS,
+        }))
+      : Array.isArray(body.companyAccess)
+        ? body.companyAccess
+        : target.companyAccess;
+
+    const mergedModules = Array.from(new Set(companyAccess.flatMap((a) => a.allowedModules)));
+
+    target.username = nextUsername;
+    target.fullName = body.fullName?.trim() || target.fullName;
+    target.employeeCode = body.employeeCode?.trim() || target.employeeCode;
+    target.department = body.department?.trim() || target.department;
+    target.position = body.position?.trim() || target.position;
+    target.roleLabel = body.roleLabel?.trim() || target.roleLabel;
+    target.employeeId = body.employeeId !== undefined ? body.employeeId : target.employeeId;
+    target.isAdmin = isAdmin;
+    target.accountStatus = (body.accountStatus as AccountStatus) || target.accountStatus;
+    target.employmentStatus = (body.employmentStatus as EmploymentStatus) || target.employmentStatus;
+    target.allowedModules = isAdmin ? ALL_MODULE_IDS : mergedModules;
+    target.companyAccess = companyAccess;
+    target.updatedBy = actor.username;
+    target.updatedAt = nowTimestamp();
+
+    // Sync linked Employee details if present
+    if (target.employeeId) {
+      const emp = db.employees.find((e) => e.id === target.employeeId);
+      if (emp) {
+        emp.name = target.fullName;
+        emp.position = target.position;
+        emp.department = target.department;
+      }
+    }
+
+    appendAudit(
+      actor,
+      company,
+      'Updated User & RBAC',
+      'masterData',
+      `Updated ${target.username} (${target.fullName}) · Role: ${target.roleLabel} · Companies: ${companyAccess
+        .map((a) => db.companies.find((c) => c.id === a.companyId)?.code || a.companyId)
+        .join(' + ')}`,
+      target.username
+    );
+    persistDatabase();
+
+    res.json({
+      ok: true,
+      user: sanitizeUser(target),
+      state: buildCompanyScopedState(actor, access, company.id),
+    });
+  });
+
+  router.post('/erp/users/:id/reset-password', requireAuth, requireActiveCompany, (req: AuthedRequest, res: Response) => {
+    const actor = req.user!;
+    const access = req.activeAccess!;
+    const company = req.activeCompany!;
+
+    if (!hasPerm(access, actor, 'manage_users')) {
+      res.status(403).json({ error: 'Forbidden: Missing manage_users permission.' });
+      return;
+    }
+
+    const target = db.users.find((u) => u.id === req.params.id);
+    if (!target) {
+      res.status(404).json({ error: 'User account not found.' });
+      return;
+    }
+
+    const { temporaryPassword, generateRandom, forceChange } = req.body as {
+      temporaryPassword?: string;
+      generateRandom?: boolean;
+      forceChange?: boolean;
+    };
+
+    const nextTemp = generateRandom ? generateTempPassword() : (temporaryPassword || '').trim();
+    if (!nextTemp || nextTemp.length < 6) {
+      res.status(400).json({ error: 'Temporary password must be at least 6 characters.' });
+      return;
+    }
+
+    target.passwordHash = hashPassword(nextTemp);
+    target.mustChangePassword = forceChange !== false;
+    target.passwordUpdatedAt = nowTimestamp();
+    target.updatedBy = actor.username;
+    target.updatedAt = nowTimestamp();
+
+    if (target.id !== actor.id) {
+      userInvalidatedBefore.set(target.id, Date.now());
+    }
+
+    appendAudit(
+      actor,
+      company,
+      'Admin Password Reset',
+      'masterData',
+      `Reset password for ${target.username} (${target.fullName}); force change on next login = ${
+        target.mustChangePassword ? 'Yes' : 'No'
+      }`,
+      target.username
+    );
+    persistDatabase();
+
+    res.json({
+      ok: true,
+      temporaryPassword: nextTemp,
+      user: sanitizeUser(target),
+      state: buildCompanyScopedState(actor, access, company.id),
+    });
+  });
+
+  router.post('/erp/users/:id/status', requireAuth, requireActiveCompany, (req: AuthedRequest, res: Response) => {
+    const actor = req.user!;
+    const access = req.activeAccess!;
+    const company = req.activeCompany!;
+
+    if (!hasPerm(access, actor, 'manage_users')) {
+      res.status(403).json({ error: 'Forbidden: Missing manage_users permission.' });
+      return;
+    }
+
+    const target = db.users.find((u) => u.id === req.params.id);
+    if (!target) {
+      res.status(404).json({ error: 'User account not found.' });
+      return;
+    }
+    if (target.id === actor.id) {
+      res.status(400).json({ error: 'You cannot deactivate or suspend your own active administrator account.' });
+      return;
+    }
+
+    const { accountStatus, employmentStatus, clearCompanyAccess } = req.body as {
+      accountStatus?: AccountStatus;
+      employmentStatus?: EmploymentStatus;
+      clearCompanyAccess?: boolean;
+    };
+
+    if (!accountStatus || !['Active', 'Inactive', 'Resigned', 'Suspended'].includes(accountStatus)) {
+      res.status(400).json({ error: 'Invalid accountStatus.' });
+      return;
+    }
+
+    const prevStatus = target.accountStatus;
+    target.accountStatus = accountStatus;
+    if (employmentStatus) {
+      target.employmentStatus = employmentStatus;
+    } else if (accountStatus === 'Resigned') {
+      target.employmentStatus = 'Resigned';
+    } else if (accountStatus === 'Active') {
+      target.employmentStatus = 'Regular';
+    }
+    if (clearCompanyAccess) {
+      target.companyAccess = [];
+      target.allowedModules = [];
+    }
+    target.updatedBy = actor.username;
+    target.updatedAt = nowTimestamp();
+
+    if (accountStatus !== 'Active') {
+      userInvalidatedBefore.set(target.id, Date.now());
+    }
+
+    appendAudit(
+      actor,
+      company,
+      `User Account ${accountStatus}`,
+      'masterData',
+      `Changed ${target.username} (${target.fullName}) status from ${prevStatus} to ${accountStatus}${
+        clearCompanyAccess ? ' and removed company access' : ''
+      }. Historical transactions preserved.`,
+      target.username
+    );
+    persistDatabase();
+
+    res.json({
+      ok: true,
+      user: sanitizeUser(target),
+      state: buildCompanyScopedState(actor, access, company.id),
+    });
+  });
+
+  router.delete('/erp/users/:id', requireAuth, requireActiveCompany, (req: AuthedRequest, res: Response) => {
+    const actor = req.user!;
+    const access = req.activeAccess!;
+    const company = req.activeCompany!;
+
+    if (!hasPerm(access, actor, 'manage_users') || (!actor.isAdmin && !hasPerm(access, actor, 'delete_transactions'))) {
+      res.status(403).json({ error: 'Forbidden: Missing permission to delete user accounts.' });
+      return;
+    }
+
+    const target = db.users.find((u) => u.id === req.params.id);
+    if (!target) {
+      res.status(404).json({ error: 'User account not found.' });
+      return;
+    }
+    if (target.id === actor.id) {
+      res.status(400).json({ error: 'You cannot delete your own active administrator account.' });
+      return;
+    }
+
+    db.users = db.users.filter((u) => u.id !== target.id);
+    userInvalidatedBefore.set(target.id, Date.now());
+
+    appendAudit(
+      actor,
+      company,
+      'Deleted User Account',
+      'masterData',
+      `Removed login account ${target.username} (${target.fullName}). All historical transactions and audit records preserved.`,
+      target.username
+    );
+    persistDatabase();
+
+    res.json({
+      ok: true,
+      state: buildCompanyScopedState(actor, access, company.id),
     });
   });
 
@@ -566,21 +1150,31 @@ export function createErpBackendRouter() {
       }
     }
 
-    // 2. Validate Users & RBAC updates (requires manage_users)
+    // 2. Validate Users & RBAC updates if passed through commit (always preserves passwordHash)
     let nextUsersMerged: UserAccount[] | null = null;
     if (Array.isArray(incoming.users) && incoming.users.length > 0) {
       const prevMap = new Map(db.users.map((u) => [u.id, u]));
-      // Preserve real passwords if masked as '••••••••'
+      const prevSafeMap = new Map(db.users.map((u) => [u.id, sanitizeUser(u)]));
       const normalizedIncomingUsers = incoming.users.map((u) => {
         const existing = prevMap.get(u.id);
-        if (existing && (!u.password || u.password === '••••••••')) {
-          return { ...u, password: existing.password };
-        }
-        return u;
+        const passwordHash =
+          u.password && u.password !== '••••••••'
+            ? hashPassword(u.password)
+            : existing?.passwordHash || hashPassword(u.username);
+        return normalizeUserRecord({
+          ...existing,
+          ...u,
+          passwordHash,
+          password: undefined,
+        });
       });
+
       const changed =
         normalizedIncomingUsers.length !== db.users.length ||
-        normalizedIncomingUsers.some((u) => JSON.stringify(u) !== JSON.stringify(prevMap.get(u.id)));
+        normalizedIncomingUsers.some(
+          (u) => JSON.stringify(sanitizeUser(u)) !== JSON.stringify(prevSafeMap.get(u.id))
+        );
+
       if (changed) {
         if (!hasPerm(access, user, 'manage_users')) {
           res.status(403).json({ error: 'Forbidden: Missing manage_users permission.' });
@@ -628,7 +1222,6 @@ export function createErpBackendRouter() {
         }
       }
 
-      // Stamp companyId on all incoming company records
       const stampedList = incomingList.map((item) => ({ ...item, companyId }));
 
       const prevMap = new Map(dbCompanyItems.map((r) => [getItemKey(col, r), r]));
@@ -653,7 +1246,6 @@ export function createErpBackendRouter() {
       // Detect additions
       for (const [key, nextItem] of nextMap.entries()) {
         if (!prevMap.has(key)) {
-          // Allow auxiliary supplier/material creation from canvassing/requisitions if user has create_transactions in those modules
           const contextualAllowed =
             (col === 'suppliers' && (hasModule(access, user, 'canvassing') || hasModule(access, user, 'masterData'))) ||
             (col === 'materials' && (hasModule(access, user, 'requisitions') || hasModule(access, user, 'masterData'))) ||
@@ -678,15 +1270,35 @@ export function createErpBackendRouter() {
           if (JSON.stringify(prevItem) !== JSON.stringify(nextItem)) {
             const prevStatus = String((prevItem as Record<string, unknown>).status || '');
             const nextStatus = String((nextItem as Record<string, unknown>).status || '');
+
+            const isRejectionTransition =
+              prevStatus !== nextStatus &&
+              (
+                (col === 'purchaseRequests' && nextStatus === 'Rejected') ||
+                (col === 'vouchers' && nextStatus === 'Cancelled') ||
+                (col === 'borrowRequests' && nextStatus === 'Rejected')
+              );
+
             const isApprovalTransition =
               prevStatus !== nextStatus &&
               (
-                (col === 'purchaseRequests' && ['For Recommending Approval', 'For Final Approval', 'Approved', 'Rejected'].includes(nextStatus)) ||
-                (col === 'vouchers' && ['Approved', 'Cancelled'].includes(nextStatus)) ||
-                (col === 'borrowRequests' && ['Approved', 'Rejected'].includes(nextStatus))
+                (col === 'purchaseRequests' && ['For Recommending Approval', 'For Final Approval', 'Approved'].includes(nextStatus)) ||
+                (col === 'vouchers' && nextStatus === 'Approved') ||
+                (col === 'borrowRequests' && nextStatus === 'Approved')
               );
 
-            if (isApprovalTransition) {
+            if (isRejectionTransition) {
+              if (!hasPerm(access, user, 'reject_transactions') && !hasPerm(access, user, 'approve_transactions')) {
+                res.status(403).json({ error: `Forbidden: Missing reject_transactions permission for ${meta.label}` });
+                return;
+              }
+              pendingAudits.push({
+                action: `${meta.label} ${nextStatus}`,
+                module: meta.module,
+                targetId: getReadableRef(nextItem),
+                details: `Transitioned ${getReadableRef(nextItem)} from ${prevStatus} to ${nextStatus}`,
+              });
+            } else if (isApprovalTransition) {
               if (!hasPerm(access, user, 'approve_transactions')) {
                 res.status(403).json({ error: `Forbidden: Missing approve_transactions permission for ${meta.label}` });
                 return;
@@ -709,9 +1321,14 @@ export function createErpBackendRouter() {
                 (col === 'employees' && hasModule(access, user, 'masterData')) ||
                 hasModule(access, user, meta.module);
 
-              // Note: Signing PR/generating PO/receiving or editing needs edit or create permission
-              if (!editContextualAllowed || (!hasPerm(access, user, 'edit_transactions') && !hasPerm(access, user, 'create_transactions'))) {
-                res.status(403).json({ error: `Forbidden: Missing edit_transactions permission for ${meta.label}` });
+              const hasActionPerm =
+                hasPerm(access, user, 'edit_transactions') ||
+                hasPerm(access, user, 'create_transactions') ||
+                hasPerm(access, user, 'process_transactions') ||
+                hasPerm(access, user, 'submit_transactions');
+
+              if (!editContextualAllowed || !hasActionPerm) {
+                res.status(403).json({ error: `Forbidden: Missing edit/process permission for ${meta.label}` });
                 return;
               }
               pendingAudits.push({
