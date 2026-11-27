@@ -6,10 +6,14 @@ import {
   AccountStatus,
   AuditLogEntry,
   Company,
+  CompanyProjectComparison,
+  DashboardProjectMetrics,
   EmploymentStatus,
   ERPState,
   ModuleId,
   PermissionId,
+  Project,
+  ProjectStatus,
   SafeUserAccount,
   UserAccount,
   UserCompanyAccess,
@@ -80,11 +84,115 @@ function verifyPassword(plain: string, storedHash?: string): boolean {
   }
 }
 
+const VALID_PROJECT_STATUSES: ProjectStatus[] = [
+  'Planning',
+  'Not Yet Started',
+  'Ongoing',
+  'On Hold',
+  'Completed',
+  'Cancelled',
+];
+
+function isManagementUser(
+  user: Pick<UserAccount, 'isAdmin' | 'position' | 'roleLabel'>,
+  access?: Pick<UserCompanyAccess, 'roleLabel'> | null
+): boolean {
+  if (user.isAdmin) return true;
+  const labels = `${user.position || ''} ${user.roleLabel || ''} ${access?.roleLabel || ''}`;
+  return /(head|vice president|\bvp\b|administrator)/i.test(labels);
+}
+
+function sanitizeCompanyAccessForRole(
+  user: Pick<UserAccount, 'isAdmin' | 'position' | 'roleLabel'>,
+  accessList: UserCompanyAccess[]
+): UserCompanyAccess[] {
+  const mgmt = isManagementUser(user);
+  return accessList.map((a) => {
+    const allowedSet = new Set<ModuleId>(a.allowedModules || []);
+    const permSet = new Set<PermissionId>(a.permissions || []);
+    if (!mgmt) {
+      allowedSet.delete('dashboard');
+      allowedSet.delete('projects');
+      permSet.delete('view_dashboard');
+      permSet.delete('export_csv');
+    } else {
+      if (allowedSet.size > 0) {
+        allowedSet.add('projects');
+      }
+      if (allowedSet.has('reports') && permSet.has('export_reports')) {
+        permSet.add('export_csv');
+      }
+    }
+    return {
+      ...a,
+      allowedModules: Array.from(allowedSet),
+      permissions: Array.from(permSet),
+    };
+  });
+}
+
+function normalizeProjectRecord(
+  raw: Partial<Project> & { id: string; companyId: string; code: string; name: string },
+  seedProjectsMap: Map<string, Project>
+): Project {
+  const seed = seedProjectsMap.get(raw.id);
+  const rawStatus = String(raw.status || '');
+  const mappedStatus: ProjectStatus =
+    rawStatus === 'Active'
+      ? 'Ongoing'
+      : VALID_PROJECT_STATUSES.includes(rawStatus as ProjectStatus)
+        ? (rawStatus as ProjectStatus)
+        : seed?.status || 'Ongoing';
+
+  const progressNum = Number.isFinite(Number(raw.progress))
+    ? Math.max(0, Math.min(100, Math.round(Number(raw.progress))))
+    : mappedStatus === 'Completed'
+      ? 100
+      : seed?.progress ?? 0;
+
+  return {
+    id: raw.id,
+    companyId: raw.companyId,
+    code: String(raw.code || seed?.code || '').trim(),
+    name: String(raw.name || seed?.name || '').trim(),
+    type: raw.type || seed?.type || 'Road',
+    location: raw.location || seed?.location || 'P-1 A Brgy. Doongan, Butuan City, Agusan Del Norte',
+    clientOwner: raw.clientOwner || seed?.clientOwner || 'Private / Government Client',
+    description: raw.description || seed?.description || `${raw.name} construction & engineering works.`,
+    manager: raw.manager || seed?.manager || 'Project Engineer',
+    startDate: raw.startDate || seed?.startDate || todayISO(),
+    targetCompletionDate: raw.targetCompletionDate || seed?.targetCompletionDate || '2027-06-30',
+    actualCompletionDate:
+      raw.actualCompletionDate ||
+      seed?.actualCompletionDate ||
+      (mappedStatus === 'Completed' ? todayISO() : undefined),
+    budget: Number(raw.budget) || seed?.budget || 0,
+    status: mappedStatus,
+    progress: mappedStatus === 'Completed' ? 100 : progressNum,
+    remarks: raw.remarks !== undefined ? raw.remarks : seed?.remarks || '',
+  };
+}
+
 function normalizeUserRecord(raw: UserAccount): UserAccount {
   const passwordHash =
     raw.passwordHash && raw.passwordHash.startsWith('scrypt$')
       ? raw.passwordHash
       : hashPassword(raw.password || raw.username);
+
+  const rawAccess = Array.isArray(raw.companyAccess) ? raw.companyAccess : [];
+  const sanitizedAccess = sanitizeCompanyAccessForRole(raw, rawAccess);
+  const mergedModules = raw.isAdmin
+    ? ALL_MODULE_IDS
+    : Array.from(
+        new Set([
+          ...sanitizedAccess.flatMap((a) => a.allowedModules),
+          ...(Array.isArray(raw.allowedModules)
+            ? raw.allowedModules.filter(
+                (m) => isManagementUser(raw) || (m !== 'dashboard' && m !== 'projects')
+              )
+            : []),
+        ])
+      );
 
   return {
     id: raw.id,
@@ -106,8 +214,8 @@ function normalizeUserRecord(raw: UserAccount): UserAccount {
     updatedBy: raw.updatedBy || 'System Setup',
     updatedAt: raw.updatedAt,
     passwordUpdatedAt: raw.passwordUpdatedAt,
-    allowedModules: Array.isArray(raw.allowedModules) ? raw.allowedModules : [],
-    companyAccess: Array.isArray(raw.companyAccess) ? raw.companyAccess : [],
+    allowedModules: mergedModules,
+    companyAccess: sanitizedAccess,
   };
 }
 
@@ -124,9 +232,13 @@ function loadDatabase(): ERPState {
       const parsed = JSON.parse(raw) as Partial<ERPState>;
       if (parsed && Array.isArray(parsed.companies) && Array.isArray(parsed.users) && parsed.companies.length >= 2) {
         const base = cloneInitialState();
+        const seedProjMap = new Map(base.projects.map((p) => [p.id, p]));
         return {
           ...base,
           ...parsed,
+          projects: Array.isArray(parsed.projects)
+            ? parsed.projects.map((p) => normalizeProjectRecord(p, seedProjMap))
+            : base.projects,
           users: parsed.users.map(normalizeUserRecord),
           auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : base.auditLogs,
         };
@@ -139,6 +251,7 @@ function loadDatabase(): ERPState {
       const parsedLegacy = JSON.parse(rawLegacy) as Partial<ERPState>;
       if (parsedLegacy && Array.isArray(parsedLegacy.companies) && parsedLegacy.companies.length >= 2) {
         const base = cloneInitialState();
+        const seedProjMap = new Map(base.projects.map((p) => [p.id, p]));
         const existingEmpIds = new Set(base.employees.map((e) => e.id));
         const mergedEmployees = [
           ...base.employees,
@@ -149,6 +262,9 @@ function loadDatabase(): ERPState {
         return {
           ...base,
           ...parsedLegacy,
+          projects: Array.isArray(parsedLegacy.projects)
+            ? parsedLegacy.projects.map((p) => normalizeProjectRecord(p, seedProjMap))
+            : base.projects,
           employees: mergedEmployees,
           users: base.users,
           auditLogs: Array.isArray(parsedLegacy.auditLogs) ? parsedLegacy.auditLogs : base.auditLogs,
@@ -733,7 +849,12 @@ export function createErpBackendRouter() {
     }
 
     const isAdmin = Boolean(body.isAdmin);
-    const companyAccess: UserCompanyAccess[] = isAdmin
+    const roleMeta = {
+      isAdmin,
+      position: (body.position || '').trim() || body.roleLabel?.trim() || 'Staff',
+      roleLabel: (body.roleLabel || '').trim() || (body.position || '').trim() || 'Staff',
+    };
+    const rawCompanyAccess: UserCompanyAccess[] = isAdmin
       ? db.companies.map((c) => ({
           companyId: c.id,
           roleLabel: body.roleLabel?.trim() || 'System Administrator',
@@ -743,6 +864,7 @@ export function createErpBackendRouter() {
       : Array.isArray(body.companyAccess)
         ? body.companyAccess
         : [];
+    const companyAccess = isAdmin ? rawCompanyAccess : sanitizeCompanyAccessForRole(roleMeta, rawCompanyAccess);
 
     if (!isAdmin && companyAccess.length === 0) {
       res.status(400).json({ error: 'Assign at least one company (RFB, RBI, or both).' });
@@ -759,7 +881,7 @@ export function createErpBackendRouter() {
         id: empId,
         companyId: targetCompanyId,
         name: fullName,
-        position: body.position?.trim() || body.roleLabel?.trim() || 'Staff',
+        position: roleMeta.position,
         department: body.department?.trim() || 'Operations',
         email: `${username}@${domain}`,
       });
@@ -774,9 +896,9 @@ export function createErpBackendRouter() {
       employeeCode: (body.employeeCode || '').trim() || `EMP-${username.toUpperCase().slice(0, 6)}`,
       fullName,
       department: (body.department || '').trim() || 'Operations',
-      position: (body.position || '').trim() || body.roleLabel?.trim() || 'Staff',
+      position: roleMeta.position,
       employeeId,
-      roleLabel: (body.roleLabel || '').trim() || (body.position || '').trim() || 'Staff',
+      roleLabel: roleMeta.roleLabel,
       isAdmin,
       accountStatus: (body.accountStatus as AccountStatus) || 'Active',
       employmentStatus: (body.employmentStatus as EmploymentStatus) || 'Regular',
@@ -841,16 +963,24 @@ export function createErpBackendRouter() {
       return;
     }
 
-    const companyAccess: UserCompanyAccess[] = isAdmin
+    const nextPosition = body.position?.trim() || target.position;
+    const nextRoleLabel = body.roleLabel?.trim() || target.roleLabel;
+    const rawCompanyAccess: UserCompanyAccess[] = isAdmin
       ? db.companies.map((c) => ({
           companyId: c.id,
-          roleLabel: body.roleLabel?.trim() || target.roleLabel || 'System Administrator',
+          roleLabel: nextRoleLabel || 'System Administrator',
           allowedModules: ALL_MODULE_IDS,
           permissions: ALL_PERMISSION_IDS,
         }))
       : Array.isArray(body.companyAccess)
         ? body.companyAccess
         : target.companyAccess;
+    const companyAccess = isAdmin
+      ? rawCompanyAccess
+      : sanitizeCompanyAccessForRole(
+          { isAdmin, position: nextPosition, roleLabel: nextRoleLabel },
+          rawCompanyAccess
+        );
 
     const mergedModules = Array.from(new Set(companyAccess.flatMap((a) => a.allowedModules)));
 
@@ -858,8 +988,8 @@ export function createErpBackendRouter() {
     target.fullName = body.fullName?.trim() || target.fullName;
     target.employeeCode = body.employeeCode?.trim() || target.employeeCode;
     target.department = body.department?.trim() || target.department;
-    target.position = body.position?.trim() || target.position;
-    target.roleLabel = body.roleLabel?.trim() || target.roleLabel;
+    target.position = nextPosition;
+    target.roleLabel = nextRoleLabel;
     target.employeeId = body.employeeId !== undefined ? body.employeeId : target.employeeId;
     target.isAdmin = isAdmin;
     target.accountStatus = (body.accountStatus as AccountStatus) || target.accountStatus;
@@ -1065,6 +1195,710 @@ export function createErpBackendRouter() {
     });
   });
 
+  // =========================================================================
+  // ROLE-PROTECTED DASHBOARD SUMMARY ENDPOINT (ADMIN, HEADS & VPs ONLY)
+  // =========================================================================
+  function isProjectDelayed(p: Project, today: string): boolean {
+    if (!p.targetCompletionDate) return false;
+    if (p.status === 'Completed' || p.status === 'Cancelled') return false;
+    return p.targetCompletionDate < today;
+  }
+
+  function daysBetweenISO(earlier: string, later: string): number {
+    const a = new Date(`${earlier}T00:00:00Z`).getTime();
+    const b = new Date(`${later}T00:00:00Z`).getTime();
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return 0;
+    return Math.max(0, Math.round((b - a) / 86400000));
+  }
+
+  function computeProjectMetrics(companyIds: string[]): DashboardProjectMetrics {
+    const today = todayISO();
+    const idSet = new Set(companyIds);
+    const scopedProjects = db.projects.filter((p) => idSet.has(p.companyId));
+    const compMap = new Map(db.companies.map((c) => [c.id, c]));
+
+    const poSpendByProj = new Map<string, number>();
+    for (const po of db.purchaseOrders) {
+      if (idSet.has(po.companyId) && po.status !== 'Cancelled') {
+        poSpendByProj.set(po.projectId, (poSpendByProj.get(po.projectId) || 0) + po.totalAmount);
+      }
+    }
+
+    const statusCounts: Record<ProjectStatus, number> = {
+      Planning: 0,
+      'Not Yet Started': 0,
+      Ongoing: 0,
+      'On Hold': 0,
+      Completed: 0,
+      Cancelled: 0,
+    };
+
+    let delayedProjects = 0;
+    let totalBudget = 0;
+    let totalActualSpend = 0;
+    let progressSum = 0;
+    const overdueProjects: DashboardProjectMetrics['overdueProjects'] = [];
+
+    const projectBudgetSeries = scopedProjects.map((p) => {
+      statusCounts[p.status] = (statusCounts[p.status] || 0) + 1;
+      const overdue = isProjectDelayed(p, today);
+      if (overdue) {
+        delayedProjects += 1;
+        const comp = compMap.get(p.companyId);
+        overdueProjects.push({
+          ...p,
+          companyCode: comp?.code || 'RFB',
+          companyName: comp?.name || 'Company',
+          daysOverdue: daysBetweenISO(p.targetCompletionDate, today),
+        });
+      }
+      const actual = poSpendByProj.get(p.id) || 0;
+      totalBudget += p.budget;
+      totalActualSpend += actual;
+      progressSum += p.progress;
+      const comp = compMap.get(p.companyId);
+      return {
+        id: p.id,
+        code: p.code,
+        name: p.name,
+        companyCode: comp?.code || 'RFB',
+        type: p.type,
+        budget: p.budget,
+        actual,
+        progress: p.progress,
+        status: p.status,
+        isOverdue: overdue,
+      };
+    });
+
+    overdueProjects.sort((a, b) => b.daysOverdue - a.daysOverdue);
+
+    return {
+      totalProjects: scopedProjects.length,
+      planningProjects: statusCounts.Planning,
+      notYetStartedProjects: statusCounts['Not Yet Started'],
+      ongoingProjects: statusCounts.Ongoing,
+      onHoldProjects: statusCounts['On Hold'],
+      completedProjects: statusCounts.Completed,
+      cancelledProjects: statusCounts.Cancelled,
+      delayedProjects,
+      totalBudget,
+      totalActualSpend,
+      avgProgress: scopedProjects.length > 0 ? Math.round(progressSum / scopedProjects.length) : 0,
+      statusBreakdown: VALID_PROJECT_STATUSES.map((status) => ({
+        status,
+        count: statusCounts[status] || 0,
+      })),
+      projectBudgetSeries,
+      overdueProjects,
+    };
+  }
+
+  router.get('/erp/dashboard', requireAuth, requireActiveCompany, (req: AuthedRequest, res: Response) => {
+    const user = req.user!;
+    const access = req.activeAccess!;
+    const company = req.activeCompany!;
+
+    const allowed =
+      isManagementUser(user, access) &&
+      hasModule(access, user, 'dashboard') &&
+      hasPerm(access, user, 'view_dashboard');
+
+    if (!allowed) {
+      appendAudit(
+        user,
+        company,
+        'Unauthorized Dashboard Access Blocked',
+        'dashboard',
+        `Blocked dashboard API request by ${user.username} (${access.roleLabel || user.position})`
+      );
+      persistDatabase();
+      res.status(403).json({
+        error:
+          'Forbidden: Executive Dashboard access is restricted to System Administrators, Department Heads, and Vice Presidents.',
+      });
+      return;
+    }
+
+    const assignedCompanies = getAssignedCompanies(user);
+    const assignedIds = assignedCompanies.map((c) => c.id);
+    const activeSummary = computeProjectMetrics([company.id]);
+    const consolidatedSummary = computeProjectMetrics(assignedIds);
+
+    const companyComparisons: CompanyProjectComparison[] = assignedCompanies.map((comp) => {
+      const m = computeProjectMetrics([comp.id]);
+      return {
+        companyId: comp.id,
+        companyCode: comp.code,
+        companyName: comp.name,
+        totalProjects: m.totalProjects,
+        ongoingProjects: m.ongoingProjects,
+        completedProjects: m.completedProjects,
+        delayedProjects: m.delayedProjects,
+        totalBudget: m.totalBudget,
+        actualSpend: m.totalActualSpend,
+        avgProgress: m.avgProgress,
+      };
+    });
+
+    res.json({
+      activeCompany: company,
+      isConsolidatedAvailable: assignedCompanies.length > 1,
+      assignedCompanyIds: assignedIds,
+      activeSummary,
+      consolidatedSummary,
+      companyComparisons,
+    });
+  });
+
+  // =========================================================================
+  // ROLE-PROTECTED REPORT CSV EXPORT ENDPOINT (ADMIN, HEADS & VPs ONLY)
+  // =========================================================================
+  router.post('/erp/reports/export-csv', requireAuth, requireActiveCompany, (req: AuthedRequest, res: Response) => {
+    const user = req.user!;
+    const access = req.activeAccess!;
+    const company = req.activeCompany!;
+
+    if (!hasModule(access, user, 'reports') || !hasPerm(access, user, 'generate_reports')) {
+      res.status(403).json({ error: 'Forbidden: Missing reports generation permission.' });
+      return;
+    }
+
+    const canExportCsv =
+      isManagementUser(user, access) &&
+      hasPerm(access, user, 'export_csv');
+
+    if (!canExportCsv) {
+      appendAudit(
+        user,
+        company,
+        'Unauthorized CSV Export Blocked',
+        'reports',
+        `Blocked CSV report export attempt by ${user.username} (${access.roleLabel || user.position})`
+      );
+      persistDatabase();
+      res.status(403).json({
+        error:
+          'Forbidden: CSV report export is restricted to System Administrators, Department Heads, and Vice Presidents. Print and PDF export remain available.',
+      });
+      return;
+    }
+
+    const { filename, reportName, columns, rows } = req.body as {
+      filename?: string;
+      reportName?: string;
+      columns?: unknown;
+      rows?: unknown;
+    };
+
+    if (!Array.isArray(columns) || !Array.isArray(rows)) {
+      res.status(400).json({ error: 'Invalid report dataset payload: columns and rows arrays are required.' });
+      return;
+    }
+
+    const escapeCsv = (val: unknown): string => {
+      const str = String(val ?? '');
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const csvLines = [
+      columns.map(escapeCsv).join(','),
+      ...rows.map((r) => (Array.isArray(r) ? r.map(escapeCsv).join(',') : '')),
+    ];
+    const csvContent = csvLines.join('\n');
+    const safeFilename = String(filename || `${company.code}_Report.csv`).replace(/[^a-zA-Z0-9._-]/g, '_');
+
+    appendAudit(
+      user,
+      company,
+      'Exported CSV Report',
+      'reports',
+      `Exported ${reportName || safeFilename} (${rows.length} rows)`
+    );
+    persistDatabase();
+
+    res.json({
+      ok: true,
+      filename: safeFilename,
+      csv: csvContent,
+    });
+  });
+
+  // =========================================================================
+  // MULTI-COMPANY PROJECT MANAGEMENT ENDPOINTS (RFB & RBI)
+  // =========================================================================
+  function enrichProject(p: Project) {
+    const today = todayISO();
+    const comp = db.companies.find((c) => c.id === p.companyId);
+    const actualSpend = db.purchaseOrders
+      .filter((po) => po.companyId === p.companyId && po.projectId === p.id && po.status !== 'Cancelled')
+      .reduce((sum, po) => sum + po.totalAmount, 0);
+    const overdue = isProjectDelayed(p, today);
+    return {
+      ...p,
+      companyCode: comp?.code || 'RFB',
+      companyName: comp?.name || 'Company',
+      actualSpend,
+      isOverdue: overdue,
+      daysOverdue: overdue ? daysBetweenISO(p.targetCompletionDate, today) : 0,
+    };
+  }
+
+  router.get('/erp/projects', requireAuth, requireActiveCompany, (req: AuthedRequest, res: Response) => {
+    const user = req.user!;
+    const access = req.activeAccess!;
+    const activeCompany = req.activeCompany!;
+
+    const canViewProjects =
+      isManagementUser(user, access) &&
+      (hasModule(access, user, 'projects') ||
+        hasModule(access, user, 'masterData') ||
+        hasModule(access, user, 'dashboard'));
+    const canViewPerm =
+      hasPerm(access, user, 'view_transactions') ||
+      hasPerm(access, user, 'view_dashboard');
+
+    if (!canViewProjects || !canViewPerm) {
+      appendAudit(
+        user,
+        activeCompany,
+        'Unauthorized Project Management Access Blocked',
+        'projects',
+        `Blocked Project Management read attempt by ${user.username} (${access.roleLabel || user.position})`
+      );
+      persistDatabase();
+      res.status(403).json({
+        error:
+          'Forbidden: Project Management access is restricted to System Administrators, Department Heads, and Vice Presidents.',
+      });
+      return;
+    }
+
+    const assignedCompanies = getAssignedCompanies(user);
+    const assignedIds = new Set(assignedCompanies.map((c) => c.id));
+    const requestedScope = req.query.scope === 'consolidated' ? 'consolidated' : 'active';
+    const requestedCompanyId = typeof req.query.companyId === 'string' ? req.query.companyId.trim() : '';
+
+    if (requestedCompanyId && !assignedIds.has(requestedCompanyId)) {
+      appendAudit(
+        user,
+        activeCompany,
+        'Cross-Company Project Read Blocked',
+        'projects',
+        `Blocked read for unassigned company ${requestedCompanyId}`
+      );
+      persistDatabase();
+      res.status(403).json({ error: 'Forbidden: You are not assigned to the requested company.' });
+      return;
+    }
+
+    const targetIds =
+      requestedCompanyId
+        ? new Set([requestedCompanyId])
+        : requestedScope === 'consolidated' && assignedCompanies.length > 1
+          ? assignedIds
+          : new Set([activeCompany.id]);
+
+    const projects = db.projects
+      .filter((p) => targetIds.has(p.companyId))
+      .map(enrichProject);
+
+    res.json({
+      projects,
+      assignedCompanies,
+      isConsolidatedAvailable: assignedCompanies.length > 1,
+      activeCompany,
+    });
+  });
+
+  router.post('/erp/projects', requireAuth, requireActiveCompany, (req: AuthedRequest, res: Response) => {
+    const user = req.user!;
+    const access = req.activeAccess!;
+    const activeCompany = req.activeCompany!;
+    const body = req.body as Partial<Project>;
+
+    const targetCompanyId = (body.companyId || activeCompany.id).trim();
+    const targetCompany = db.companies.find((c) => c.id === targetCompanyId && c.isActive);
+    if (!targetCompany) {
+      res.status(404).json({ error: 'Target company not found or inactive.' });
+      return;
+    }
+
+    const targetAccess = getEffectiveAccess(user, targetCompanyId);
+    if (!targetAccess) {
+      appendAudit(
+        user,
+        activeCompany,
+        'Cross-Company Project Write Blocked',
+        'projects',
+        `Blocked attempt to create project in unassigned company ${targetCompany.code}`
+      );
+      persistDatabase();
+      res.status(403).json({ error: `Forbidden: You do not have access to ${targetCompany.name}.` });
+      return;
+    }
+
+    const canCreateInTarget =
+      isManagementUser(user, targetAccess) &&
+      (hasModule(targetAccess, user, 'projects') || hasModule(targetAccess, user, 'masterData')) &&
+      hasPerm(targetAccess, user, 'create_transactions');
+
+    if (!canCreateInTarget) {
+      res.status(403).json({
+        error:
+          'Forbidden: Project Management creation is restricted to System Administrators, Department Heads, and Vice Presidents.',
+      });
+      return;
+    }
+
+    const code = String(body.code || '').trim().toUpperCase();
+    const name = String(body.name || '').trim();
+    const location = String(body.location || '').trim();
+    const clientOwner = String(body.clientOwner || '').trim();
+    const manager = String(body.manager || '').trim();
+    const startDate = String(body.startDate || '').trim();
+    const targetCompletionDate = String(body.targetCompletionDate || '').trim();
+    const status = (body.status || 'Planning') as ProjectStatus;
+
+    if (!code || !name || !location || !manager || !startDate || !targetCompletionDate) {
+      res.status(400).json({
+        error: 'Project Code, Name, Location, Project Manager, Start Date, and Target Completion Date are required.',
+      });
+      return;
+    }
+    if (!VALID_PROJECT_STATUSES.includes(status)) {
+      res.status(400).json({ error: 'Invalid project status.' });
+      return;
+    }
+
+    const duplicate = db.projects.find(
+      (p) => p.companyId === targetCompanyId && p.code.trim().toLowerCase() === code.toLowerCase()
+    );
+    if (duplicate) {
+      res.status(409).json({
+        error: `Duplicate Project Code: "${code}" already exists in ${targetCompany.name} (${targetCompany.code}).`,
+      });
+      return;
+    }
+
+    const progressRaw = Number(body.progress);
+    const progress =
+      status === 'Completed'
+        ? 100
+        : Number.isFinite(progressRaw)
+          ? Math.max(0, Math.min(100, Math.round(progressRaw)))
+          : 0;
+
+    const created: Project = {
+      id: `proj-${Date.now()}`,
+      companyId: targetCompanyId,
+      code,
+      name,
+      type: body.type || 'Road',
+      location,
+      clientOwner: clientOwner || `${targetCompany.name} Client`,
+      description: String(body.description || '').trim() || `${name} engineering and construction works.`,
+      manager,
+      startDate,
+      targetCompletionDate,
+      actualCompletionDate:
+        body.actualCompletionDate || (status === 'Completed' ? todayISO() : undefined),
+      budget: Number(body.budget) || 0,
+      status,
+      progress,
+      remarks: String(body.remarks || '').trim(),
+    };
+
+    db.projects.push(created);
+    appendAudit(
+      user,
+      targetCompany,
+      'Created Project',
+      'projects',
+      `Registered ${created.code} — ${created.name} (${created.status}, ${created.progress}%)`,
+      created.code
+    );
+    persistDatabase();
+
+    res.status(201).json({
+      ok: true,
+      project: enrichProject(created),
+      state: buildCompanyScopedState(user, access, activeCompany.id),
+    });
+  });
+
+  router.put('/erp/projects/:id', requireAuth, requireActiveCompany, (req: AuthedRequest, res: Response) => {
+    const user = req.user!;
+    const access = req.activeAccess!;
+    const activeCompany = req.activeCompany!;
+    const existing = db.projects.find((p) => p.id === req.params.id);
+
+    if (!existing) {
+      res.status(404).json({ error: 'Project not found.' });
+      return;
+    }
+
+    const existingAccess = getEffectiveAccess(user, existing.companyId);
+    if (!existingAccess) {
+      appendAudit(
+        user,
+        activeCompany,
+        'Cross-Company Project Edit Blocked',
+        'projects',
+        `Blocked edit on ${existing.code} belonging to ${existing.companyId}`
+      );
+      persistDatabase();
+      res.status(403).json({ error: 'Forbidden: Cross-company project edit blocked.' });
+      return;
+    }
+
+    const canEditTarget =
+      isManagementUser(user, existingAccess) &&
+      (hasModule(existingAccess, user, 'projects') || hasModule(existingAccess, user, 'masterData')) &&
+      hasPerm(existingAccess, user, 'edit_transactions');
+
+    if (!canEditTarget) {
+      res.status(403).json({
+        error:
+          'Forbidden: Project Management edits are restricted to System Administrators, Department Heads, and Vice Presidents.',
+      });
+      return;
+    }
+
+    const body = req.body as Partial<Project>;
+    const nextCompanyId = (body.companyId || existing.companyId).trim();
+    if (nextCompanyId !== existing.companyId) {
+      const nextCompAccess = getEffectiveAccess(user, nextCompanyId);
+      if (!nextCompAccess || !hasPerm(nextCompAccess, user, 'edit_transactions')) {
+        res.status(403).json({ error: 'Forbidden: Cannot reassign project to an unauthorized company.' });
+        return;
+      }
+    }
+
+    const nextCode = String(body.code ?? existing.code).trim().toUpperCase();
+    const nextName = String(body.name ?? existing.name).trim();
+    if (!nextCode || !nextName) {
+      res.status(400).json({ error: 'Project Code and Project Name are required.' });
+      return;
+    }
+
+    const duplicate = db.projects.find(
+      (p) =>
+        p.id !== existing.id &&
+        p.companyId === nextCompanyId &&
+        p.code.trim().toLowerCase() === nextCode.toLowerCase()
+    );
+    if (duplicate) {
+      const comp = db.companies.find((c) => c.id === nextCompanyId);
+      res.status(409).json({
+        error: `Duplicate Project Code: "${nextCode}" already exists in ${comp?.code || nextCompanyId}.`,
+      });
+      return;
+    }
+
+    const nextStatus = (body.status ?? existing.status) as ProjectStatus;
+    if (!VALID_PROJECT_STATUSES.includes(nextStatus)) {
+      res.status(400).json({ error: 'Invalid project status.' });
+      return;
+    }
+
+    const progressVal =
+      body.progress !== undefined
+        ? Math.max(0, Math.min(100, Math.round(Number(body.progress) || 0)))
+        : nextStatus === 'Completed'
+          ? 100
+          : existing.progress;
+
+    const updated: Project = {
+      ...existing,
+      companyId: nextCompanyId,
+      code: nextCode,
+      name: nextName,
+      type: body.type || existing.type,
+      location: body.location !== undefined ? String(body.location).trim() : existing.location,
+      clientOwner: body.clientOwner !== undefined ? String(body.clientOwner).trim() : existing.clientOwner,
+      description: body.description !== undefined ? String(body.description).trim() : existing.description,
+      manager: body.manager !== undefined ? String(body.manager).trim() : existing.manager,
+      startDate: body.startDate || existing.startDate,
+      targetCompletionDate: body.targetCompletionDate || existing.targetCompletionDate,
+      actualCompletionDate:
+        body.actualCompletionDate !== undefined
+          ? body.actualCompletionDate || undefined
+          : nextStatus === 'Completed'
+            ? existing.actualCompletionDate || todayISO()
+            : existing.actualCompletionDate,
+      budget: body.budget !== undefined ? Number(body.budget) || 0 : existing.budget,
+      status: nextStatus,
+      progress: nextStatus === 'Completed' ? 100 : progressVal,
+      remarks: body.remarks !== undefined ? String(body.remarks).trim() : existing.remarks,
+    };
+
+    db.projects = db.projects.map((p) => (p.id === existing.id ? updated : p));
+    const targetComp = db.companies.find((c) => c.id === updated.companyId) || activeCompany;
+    appendAudit(
+      user,
+      targetComp,
+      'Updated Project',
+      'projects',
+      `Updated ${updated.code} — ${updated.name} (${updated.status}, ${updated.progress}%)`,
+      updated.code
+    );
+    persistDatabase();
+
+    res.json({
+      ok: true,
+      project: enrichProject(updated),
+      state: buildCompanyScopedState(user, access, activeCompany.id),
+    });
+  });
+
+  router.patch('/erp/projects/:id/status', requireAuth, requireActiveCompany, (req: AuthedRequest, res: Response) => {
+    const user = req.user!;
+    const access = req.activeAccess!;
+    const activeCompany = req.activeCompany!;
+    const existing = db.projects.find((p) => p.id === req.params.id);
+
+    if (!existing) {
+      res.status(404).json({ error: 'Project not found.' });
+      return;
+    }
+
+    const existingAccess = getEffectiveAccess(user, existing.companyId);
+    if (!existingAccess) {
+      res.status(403).json({ error: 'Forbidden: Cross-company project update blocked.' });
+      return;
+    }
+
+    const canUpdateStatus =
+      isManagementUser(user, existingAccess) &&
+      (hasModule(existingAccess, user, 'projects') || hasModule(existingAccess, user, 'masterData')) &&
+      (hasPerm(existingAccess, user, 'edit_transactions') ||
+        hasPerm(existingAccess, user, 'process_transactions') ||
+        hasPerm(existingAccess, user, 'approve_transactions'));
+
+    if (!canUpdateStatus) {
+      res.status(403).json({
+        error:
+          'Forbidden: Project Management status updates are restricted to System Administrators, Department Heads, and Vice Presidents.',
+      });
+      return;
+    }
+
+    const { status, progress, actualCompletionDate, remarks } = req.body as {
+      status?: ProjectStatus;
+      progress?: number;
+      actualCompletionDate?: string;
+      remarks?: string;
+    };
+
+    const nextStatus = status || existing.status;
+    if (!VALID_PROJECT_STATUSES.includes(nextStatus)) {
+      res.status(400).json({ error: 'Invalid project status.' });
+      return;
+    }
+
+    const nextProgress =
+      nextStatus === 'Completed'
+        ? 100
+        : progress !== undefined
+          ? Math.max(0, Math.min(100, Math.round(Number(progress) || 0)))
+          : existing.progress;
+
+    const updated: Project = {
+      ...existing,
+      status: nextStatus,
+      progress: nextProgress,
+      actualCompletionDate:
+        actualCompletionDate !== undefined
+          ? actualCompletionDate || undefined
+          : nextStatus === 'Completed'
+            ? existing.actualCompletionDate || todayISO()
+            : existing.actualCompletionDate,
+      remarks: remarks !== undefined ? String(remarks).trim() : existing.remarks,
+    };
+
+    db.projects = db.projects.map((p) => (p.id === existing.id ? updated : p));
+    const targetComp = db.companies.find((c) => c.id === updated.companyId) || activeCompany;
+    appendAudit(
+      user,
+      targetComp,
+      'Updated Project Status',
+      'projects',
+      `${updated.code}: ${existing.status} (${existing.progress}%) → ${updated.status} (${updated.progress}%)`,
+      updated.code
+    );
+    persistDatabase();
+
+    res.json({
+      ok: true,
+      project: enrichProject(updated),
+      state: buildCompanyScopedState(user, access, activeCompany.id),
+    });
+  });
+
+  router.delete('/erp/projects/:id', requireAuth, requireActiveCompany, (req: AuthedRequest, res: Response) => {
+    const user = req.user!;
+    const access = req.activeAccess!;
+    const activeCompany = req.activeCompany!;
+    const existing = db.projects.find((p) => p.id === req.params.id);
+
+    if (!existing) {
+      res.status(404).json({ error: 'Project not found.' });
+      return;
+    }
+
+    const existingAccess = getEffectiveAccess(user, existing.companyId);
+    if (!existingAccess) {
+      res.status(403).json({ error: 'Forbidden: Cross-company project delete blocked.' });
+      return;
+    }
+
+    const canDelete =
+      isManagementUser(user, existingAccess) &&
+      (hasModule(existingAccess, user, 'projects') || hasModule(existingAccess, user, 'masterData')) &&
+      hasPerm(existingAccess, user, 'delete_transactions');
+
+    if (!canDelete) {
+      res.status(403).json({
+        error:
+          'Forbidden: Project Management deletion is restricted to System Administrators, Department Heads, and Vice Presidents.',
+      });
+      return;
+    }
+
+    const hasLinkedDocs =
+      db.requisitions.some((r) => r.projectId === existing.id) ||
+      db.purchaseOrders.some((po) => po.projectId === existing.id) ||
+      db.vouchers.some((v) => v.projectId === existing.id);
+
+    if (hasLinkedDocs) {
+      res.status(409).json({
+        error: `Cannot delete ${existing.code}: active requisitions, purchase orders, or vouchers reference this project. Set status to Cancelled instead.`,
+      });
+      return;
+    }
+
+    db.projects = db.projects.filter((p) => p.id !== existing.id);
+    const targetComp = db.companies.find((c) => c.id === existing.companyId) || activeCompany;
+    appendAudit(
+      user,
+      targetComp,
+      'Deleted Project',
+      'projects',
+      `Deleted project ${existing.code} — ${existing.name}`,
+      existing.code
+    );
+    persistDatabase();
+
+    res.json({
+      ok: true,
+      state: buildCompanyScopedState(user, access, activeCompany.id),
+    });
+  });
+
   // Direct REST read endpoint with strict company isolation
   router.get('/erp/records/:collection', requireAuth, requireActiveCompany, (req: AuthedRequest, res: Response) => {
     const col = req.params.collection as ScopedCollectionKey;
@@ -1234,7 +2068,10 @@ export function createErpBackendRouter() {
       // Detect deletions
       for (const [key, prevItem] of prevMap.entries()) {
         if (!nextMap.has(key)) {
-          if (!hasPerm(access, user, 'delete_transactions')) {
+          if (
+            !hasPerm(access, user, 'delete_transactions') ||
+            (col === 'projects' && !isManagementUser(user, access))
+          ) {
             res.status(403).json({ error: `Forbidden: Missing delete_transactions permission to remove ${meta.label}` });
             return;
           }
@@ -1247,10 +2084,26 @@ export function createErpBackendRouter() {
         }
       }
 
+      // Check duplicate Project Code within the same company when committing projects
+      if (col === 'projects') {
+        const seenCodes = new Set<string>();
+        for (const item of stampedList) {
+          const code = String((item as Record<string, unknown>).code || '').trim().toLowerCase();
+          if (code && seenCodes.has(code)) {
+            res.status(409).json({ error: `Duplicate Project Code "${String((item as Record<string, unknown>).code)}" in ${company.code}.` });
+            return;
+          }
+          if (code) seenCodes.add(code);
+        }
+      }
+
       // Detect additions
       for (const [key, nextItem] of nextMap.entries()) {
         if (!prevMap.has(key)) {
           const contextualAllowed =
+            (col === 'projects' &&
+              isManagementUser(user, access) &&
+              (hasModule(access, user, 'projects') || hasModule(access, user, 'masterData'))) ||
             (col === 'suppliers' && (hasModule(access, user, 'canvassing') || hasModule(access, user, 'masterData'))) ||
             (col === 'materials' && (hasModule(access, user, 'requisitions') || hasModule(access, user, 'masterData'))) ||
             (col === 'journalEntries' && (hasModule(access, user, 'accounting') || hasModule(access, user, 'orders') || hasModule(access, user, 'vouchers') || hasModule(access, user, 'tools'))) ||
@@ -1315,6 +2168,9 @@ export function createErpBackendRouter() {
               });
             } else {
               const editContextualAllowed =
+                (col === 'projects' &&
+                  isManagementUser(user, access) &&
+                  (hasModule(access, user, 'projects') || hasModule(access, user, 'masterData'))) ||
                 (col === 'requisitions' && (hasModule(access, user, 'requisitions') || hasModule(access, user, 'canvassing'))) ||
                 (col === 'canvasses' && hasModule(access, user, 'canvassing')) ||
                 (col === 'purchaseRequests' && hasModule(access, user, 'purchasing')) ||

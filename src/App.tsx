@@ -12,6 +12,7 @@ import {
   FileBarChart2,
   FileCheck,
   FileSpreadsheet,
+  FolderKanban,
   KeyRound,
   LayoutDashboard,
   Lock,
@@ -37,6 +38,7 @@ import { DashboardModule } from './components/modules/DashboardModule';
 import { DocumentTrackerModule } from './components/modules/DocumentTrackerModule';
 import { MasterDataModule } from './components/modules/MasterDataModule';
 import { OrdersModule } from './components/modules/OrdersModule';
+import { ProjectManagementModule } from './components/modules/ProjectManagementModule';
 import { PurchasingModule } from './components/modules/PurchasingModule';
 import { ReportsModule } from './components/modules/ReportsModule';
 import { RequisitionsModule } from './components/modules/RequisitionsModule';
@@ -66,6 +68,7 @@ interface NavDef {
 
 const NAV_ITEMS: NavDef[] = [
   { id: 'dashboard', label: 'Dashboard (BI)', icon: LayoutDashboard },
+  { id: 'projects', label: 'Project Management', icon: FolderKanban },
   { id: 'requisitions', label: 'Requisitions', icon: ClipboardList },
   { id: 'canvassing', label: 'Canvassing', icon: FileSpreadsheet },
   { id: 'purchasing', label: 'Purchasing', icon: ShoppingCart },
@@ -77,6 +80,27 @@ const NAV_ITEMS: NavDef[] = [
   { id: 'reports', label: 'Reports', icon: FileBarChart2 },
   { id: 'masterData', label: 'Master Data', icon: Database },
 ];
+
+const ALL_NAV_MODULE_IDS = new Set<ModuleId>(NAV_ITEMS.map((n) => n.id));
+
+function isManagementRole(user: SafeUserAccount, access?: UserCompanyAccess | null): boolean {
+  if (user.isAdmin) return true;
+  const labels = `${user.position || ''} ${user.roleLabel || ''} ${access?.roleLabel || ''}`;
+  return /(head|vice president|\bvp\b|administrator)/i.test(labels);
+}
+
+function readModuleFromUrl(): ModuleId | null {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const qMod = params.get('module') as ModuleId | null;
+    if (qMod && ALL_NAV_MODULE_IDS.has(qMod)) return qMod;
+    const pathSeg = window.location.pathname.replace(/^\/+|\/+$/g, '') as ModuleId;
+    if (pathSeg && ALL_NAV_MODULE_IDS.has(pathSeg)) return pathSeg;
+  } catch {
+    // ignore URL parsing errors
+  }
+  return null;
+}
 
 export default function App() {
   const [darkMode, setDarkMode] = useState<boolean>(() => {
@@ -104,7 +128,8 @@ export default function App() {
     stateRef.current = state;
   }, [state]);
 
-  const [activeModule, setActiveModule] = useState<ModuleId>('dashboard');
+  const [activeModule, setActiveModule] = useState<ModuleId>(() => readModuleFromUrl() || 'dashboard');
+  const [urlRequestedModule, setUrlRequestedModule] = useState<ModuleId | null>(() => readModuleFromUrl());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [printDoc, setPrintDoc] = useState<PrintDocument | null>(null);
   const [globalQuery, setGlobalQuery] = useState('');
@@ -114,6 +139,18 @@ export default function App() {
   const [requirePasswordChange, setRequirePasswordChange] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [syncError, setSyncError] = useState('');
+
+  useEffect(() => {
+    const onPopState = () => {
+      const requested = readModuleFromUrl();
+      if (requested) {
+        setUrlRequestedModule(requested);
+        setActiveModule(requested);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
@@ -192,20 +229,37 @@ export default function App() {
           }
         }
 
-        const nextAllowed = currentUser.isAdmin
+        const canDash =
+          isManagementRole(currentUser, res.activeAccess) &&
+          (currentUser.isAdmin ||
+            (res.activeAccess.allowedModules.includes('dashboard') &&
+              res.activeAccess.permissions.includes('view_dashboard')));
+
+        const canProj =
+          isManagementRole(currentUser, res.activeAccess) &&
+          (currentUser.isAdmin || res.activeAccess.allowedModules.includes('projects'));
+
+        const nextAllowed = (currentUser.isAdmin
           ? NAV_ITEMS.map((n) => n.id)
-          : res.activeAccess.allowedModules;
+          : res.activeAccess.allowedModules
+        ).filter((m) => (m !== 'dashboard' || canDash) && (m !== 'projects' || canProj));
 
         setActiveModule((prev) => {
+          const requested = urlRequestedModule || readModuleFromUrl();
+          if ((requested === 'dashboard' && !canDash) || (requested === 'projects' && !canProj)) {
+            // Preserve requested module so Access Denied 403 UI blocks manual URL navigation cleanly
+            return requested;
+          }
+          if (requested && nextAllowed.includes(requested)) return requested;
           if (nextAllowed.includes(prev)) return prev;
-          if (nextAllowed.includes('dashboard')) return 'dashboard';
+          if (canDash && nextAllowed.includes('dashboard')) return 'dashboard';
           return nextAllowed[0] || 'requisitions';
         });
       } finally {
         setSwitchingCompany(false);
       }
     },
-    [authToken, currentUser]
+    [authToken, currentUser, urlRequestedModule]
   );
 
   const handleExitToCompanySelector = () => {
@@ -301,16 +355,52 @@ export default function App() {
     [currentUser, activeAccess]
   );
 
+  const canAccessDashboard = useMemo(() => {
+    if (!currentUser || !activeAccess) return false;
+    if (!isManagementRole(currentUser, activeAccess)) return false;
+    return (
+      currentUser.isAdmin ||
+      (activeAccess.allowedModules.includes('dashboard') &&
+        activeAccess.permissions.includes('view_dashboard'))
+    );
+  }, [currentUser, activeAccess]);
+
+  const canAccessProjects = useMemo(() => {
+    if (!currentUser || !activeAccess) return false;
+    if (!isManagementRole(currentUser, activeAccess)) return false;
+    return currentUser.isAdmin || activeAccess.allowedModules.includes('projects');
+  }, [currentUser, activeAccess]);
+
   const allowedNavItems = useMemo(() => {
     if (!currentUser || !activeAccess) return [];
-    if (currentUser.isAdmin) return NAV_ITEMS;
-    return NAV_ITEMS.filter((n) => activeAccess.allowedModules.includes(n.id));
-  }, [currentUser, activeAccess]);
+    const base = currentUser.isAdmin
+      ? NAV_ITEMS
+      : NAV_ITEMS.filter((n) => activeAccess.allowedModules.includes(n.id));
+    return base.filter(
+      (n) =>
+        (n.id !== 'dashboard' || canAccessDashboard) &&
+        (n.id !== 'projects' || canAccessProjects)
+    );
+  }, [currentUser, activeAccess, canAccessDashboard, canAccessProjects]);
 
   const allowedModuleIds = useMemo(
     () => allowedNavItems.map((n) => n.id),
     [allowedNavItems]
   );
+
+  // Sync module state with URL query (?module=...) while preserving unauthorized URL checks
+  useEffect(() => {
+    if (!activeCompany || !currentUser || !activeAccess) return;
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('module') !== activeModule) {
+        url.searchParams.set('module', activeModule);
+        window.history.replaceState(null, '', `${url.pathname}${url.search}`);
+      }
+    } catch {
+      // ignore URL sync errors
+    }
+  }, [activeModule, activeCompany, currentUser, activeAccess]);
 
   const currentEmployee: Employee = useMemo(() => {
     const companyId = activeCompany?.id || 'comp-rfb';
@@ -333,8 +423,11 @@ export default function App() {
   // Company-isolated pending notifications scoped to user's accessible modules
   const notifications = useMemo(() => {
     if (!currentUser || !activeAccess || !state) return [];
-    const canSee = (m: ModuleId) =>
-      currentUser.isAdmin || activeAccess.allowedModules.includes(m);
+    const canSee = (m: ModuleId) => {
+      if (m === 'projects' && !canAccessProjects) return false;
+      if (m === 'dashboard' && !canAccessDashboard) return false;
+      return currentUser.isAdmin || activeAccess.allowedModules.includes(m);
+    };
     const items: { id: string; text: string; module: ModuleId }[] = [];
     const today = todayISO();
 
@@ -391,6 +484,23 @@ export default function App() {
       }
     }
 
+    if (canSee('projects')) {
+      for (const prj of state.projects) {
+        if (
+          prj.status !== 'Completed' &&
+          prj.status !== 'Cancelled' &&
+          prj.targetCompletionDate &&
+          prj.targetCompletionDate < today
+        ) {
+          items.push({
+            id: `notif-proj-${prj.id}`,
+            text: `Overdue project: ${prj.code} (${prj.name})`,
+            module: 'projects',
+          });
+        }
+      }
+    }
+
     return items;
   }, [currentUser, activeAccess, state]);
 
@@ -398,10 +508,24 @@ export default function App() {
   const searchResults = useMemo(() => {
     const q = globalQuery.trim().toLowerCase();
     if (!q || !currentUser || !activeAccess || !state) return [];
-    const canSee = (m: ModuleId) =>
-      currentUser.isAdmin || activeAccess.allowedModules.includes(m);
+    const canSee = (m: ModuleId) => {
+      if (m === 'projects' && !canAccessProjects) return false;
+      if (m === 'dashboard' && !canAccessDashboard) return false;
+      return currentUser.isAdmin || activeAccess.allowedModules.includes(m);
+    };
     const hits: { label: string; sub: string; module: ModuleId }[] = [];
 
+    if (canSee('projects')) {
+      for (const prj of state.projects) {
+        if (
+          prj.code.toLowerCase().includes(q) ||
+          prj.name.toLowerCase().includes(q) ||
+          prj.location.toLowerCase().includes(q)
+        ) {
+          hits.push({ label: prj.code, sub: `${prj.name} · ${prj.status}`, module: 'projects' });
+        }
+      }
+    }
     if (canSee('requisitions')) {
       for (const r of state.requisitions) {
         if (r.reqNo.toLowerCase().includes(q) || r.purpose.toLowerCase().includes(q)) {
@@ -511,21 +635,43 @@ export default function App() {
   const canSwitchCompany = availableCompanies.length > 1;
   const activeRoleLabel = activeAccess.roleLabel || currentUser.roleLabel;
   const isModuleAllowed =
-    currentUser.isAdmin || activeAccess.allowedModules.includes(activeModule);
+    activeModule === 'dashboard'
+      ? canAccessDashboard
+      : activeModule === 'projects'
+        ? canAccessProjects
+        : currentUser.isAdmin || activeAccess.allowedModules.includes(activeModule);
 
   const renderActiveModule = () => {
     if (!isModuleAllowed) {
+      const fallbackModule = allowedNavItems[0]?.id;
       return (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center max-w-lg mx-auto mt-10 space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300 flex items-center justify-center mx-auto">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center max-w-lg mx-auto mt-10 space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-300 flex items-center justify-center mx-auto">
             <Lock className="w-6 h-6" />
           </div>
           <h2 className="font-display text-lg font-bold text-slate-900 dark:text-slate-100">
-            Module Restricted for {activeCompany.code}
+            {activeModule === 'dashboard'
+              ? '403 — Executive Dashboard Access Restricted'
+              : activeModule === 'projects'
+                ? '403 — Project Management Access Restricted'
+                : `Module Restricted for ${activeCompany.code}`}
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Your assigned role ({activeRoleLabel}) inside {activeCompany.name} does not grant access to this module.
+            {activeModule === 'dashboard'
+              ? 'Only System Administrators, Department Heads, and Vice Presidents are authorized to view the Management Dashboard.'
+              : activeModule === 'projects'
+                ? 'Only System Administrators, Department Heads, and Vice Presidents are authorized to access Project Management.'
+                : `Your assigned role (${activeRoleLabel}) inside ${activeCompany.name} does not grant access to this module.`}
           </p>
+          {fallbackModule && (
+            <button
+              type="button"
+              onClick={() => setActiveModule(fallbackModule)}
+              className="px-4 py-2 text-xs font-semibold brand-btn-primary rounded-xl cursor-pointer"
+            >
+              Go to {allowedNavItems[0].label}
+            </button>
+          )}
         </div>
       );
     }
@@ -534,13 +680,30 @@ export default function App() {
       case 'dashboard':
         return (
           <DashboardModule
-            state={state}
+            authToken={authToken}
             currentUser={currentUser}
             activeCompany={activeCompany}
+            activeAccess={activeAccess}
             can={can}
             allowedModules={allowedModuleIds}
             userName={currentEmployee.name.split(' ')[0]}
             onNavigate={setActiveModule}
+          />
+        );
+      case 'projects':
+        return (
+          <ProjectManagementModule
+            state={state}
+            authToken={authToken}
+            currentUser={currentUser}
+            activeCompany={activeCompany}
+            activeAccess={activeAccess}
+            currentEmployee={currentEmployee}
+            can={can}
+            onSyncServerState={(nextState) => {
+              stateRef.current = nextState;
+              setState(nextState);
+            }}
           />
         );
       case 'requisitions':
@@ -629,6 +792,9 @@ export default function App() {
         return (
           <ReportsModule
             state={state}
+            authToken={authToken}
+            currentUser={currentUser}
+            activeAccess={activeAccess}
             currentEmployee={currentEmployee}
             activeCompany={activeCompany}
             can={can}

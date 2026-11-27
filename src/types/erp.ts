@@ -1,5 +1,6 @@
 export type ModuleId =
   | 'dashboard'
+  | 'projects'
   | 'requisitions'
   | 'canvassing'
   | 'purchasing'
@@ -24,6 +25,7 @@ export type PermissionId =
   | 'print_documents'
   | 'generate_reports'
   | 'export_reports'
+  | 'export_csv'
   | 'manage_users'
   | 'manage_companies';
 
@@ -54,6 +56,14 @@ export interface UserCompanyAccess {
 
 export type ProjectType = 'Road' | 'Bridge' | 'Building' | 'Administrative';
 
+export type ProjectStatus =
+  | 'Planning'
+  | 'Not Yet Started'
+  | 'Ongoing'
+  | 'On Hold'
+  | 'Completed'
+  | 'Cancelled';
+
 export type ItemGroup = 'Construction Materials' | 'ICT Equipment' | 'General Supplies';
 
 export interface Project {
@@ -63,10 +73,71 @@ export interface Project {
   name: string;
   type: ProjectType;
   location: string;
-  budget: number;
-  status: 'Active' | 'Completed' | 'On Hold';
-  startDate: string;
+  clientOwner: string;
+  description: string;
   manager: string;
+  startDate: string;
+  targetCompletionDate: string;
+  actualCompletionDate?: string;
+  budget: number;
+  status: ProjectStatus;
+  progress: number;
+  remarks?: string;
+}
+
+export interface ProjectStatusBreakdown {
+  status: ProjectStatus;
+  count: number;
+}
+
+export interface CompanyProjectComparison {
+  companyId: string;
+  companyCode: string;
+  companyName: string;
+  totalProjects: number;
+  ongoingProjects: number;
+  completedProjects: number;
+  delayedProjects: number;
+  totalBudget: number;
+  actualSpend: number;
+  avgProgress: number;
+}
+
+export interface DashboardProjectMetrics {
+  totalProjects: number;
+  planningProjects: number;
+  notYetStartedProjects: number;
+  ongoingProjects: number;
+  onHoldProjects: number;
+  completedProjects: number;
+  cancelledProjects: number;
+  delayedProjects: number;
+  totalBudget: number;
+  totalActualSpend: number;
+  avgProgress: number;
+  statusBreakdown: ProjectStatusBreakdown[];
+  projectBudgetSeries: {
+    id: string;
+    code: string;
+    name: string;
+    companyCode: string;
+    type: ProjectType;
+    budget: number;
+    actual: number;
+    progress: number;
+    status: ProjectStatus;
+    isOverdue: boolean;
+  }[];
+  overdueProjects: (Project & { companyCode: string; companyName: string; daysOverdue: number })[];
+}
+
+export interface DashboardSummaryResponse {
+  activeCompany: Company;
+  isConsolidatedAvailable: boolean;
+  assignedCompanyIds: string[];
+  activeSummary: DashboardProjectMetrics;
+  consolidatedSummary: DashboardProjectMetrics;
+  companyComparisons: CompanyProjectComparison[];
 }
 
 export interface Supplier {

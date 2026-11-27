@@ -1,130 +1,113 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   ArrowRight,
   Building2,
-  ClipboardCheck,
-  Database,
-  DollarSign,
-  FileSpreadsheet,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  FileBarChart2,
+  FolderKanban,
   Lock,
-  Plus,
-  TrendingDown,
-  Wrench,
+  PauseCircle,
 } from 'lucide-react';
-import { SQL_WAREHOUSE_SCHEMA } from '../../utils/erpConfig';
-import { Company, ERPState, ModuleId, PermissionId, SafeUserAccount } from '../../types/erp';
+import {
+  Company,
+  DashboardProjectMetrics,
+  DashboardSummaryResponse,
+  ModuleId,
+  PermissionId,
+  ProjectStatus,
+  SafeUserAccount,
+  UserCompanyAccess,
+} from '../../types/erp';
+import { apiFetchDashboardSummary } from '../../utils/apiClient';
 import { formatCompactPHP, formatPHP, getGreeting } from '../../utils/formatters';
-import { BudgetVsActualChart, CategoryDonutChart, MonthlyTrendChart } from '../Charts';
+import { BudgetVsActualChart } from '../Charts';
+import { StatusText } from '../StatusText';
 
 interface DashboardModuleProps {
-  state: ERPState;
+  authToken: string;
   currentUser: SafeUserAccount;
   activeCompany: Company;
+  activeAccess: UserCompanyAccess;
   can: (perm: PermissionId) => boolean;
   allowedModules: ModuleId[];
   userName: string;
   onNavigate: (module: ModuleId) => void;
 }
 
+const STATUS_BAR_COLORS: Record<ProjectStatus, string> = {
+  Planning: '#64748B',
+  'Not Yet Started': '#94A3B8',
+  Ongoing: '#2563EB',
+  'On Hold': '#D97706',
+  Completed: '#059669',
+  Cancelled: '#DC2626',
+};
+
+function isManagementUser(user: SafeUserAccount, access: UserCompanyAccess): boolean {
+  if (user.isAdmin) return true;
+  const labels = `${user.position || ''} ${user.roleLabel || ''} ${access.roleLabel || ''}`;
+  return /(head|vice president|\bvp\b|administrator)/i.test(labels);
+}
+
 export const DashboardModule: React.FC<DashboardModuleProps> = ({
-  state,
+  authToken,
   currentUser,
   activeCompany,
+  activeAccess,
   can,
   allowedModules,
   userName,
   onNavigate,
 }) => {
-  const [showSqlWarehouse, setShowSqlWarehouse] = useState(false);
+  const [summary, setSummary] = useState<DashboardSummaryResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [deniedError, setDeniedError] = useState('');
+  const [viewMode, setViewMode] = useState<'consolidated' | 'active'>('consolidated');
 
+  const isMgmt = useMemo(
+    () => isManagementUser(currentUser, activeAccess),
+    [currentUser, activeAccess]
+  );
+  const canViewDashboard = isMgmt && (currentUser.isAdmin || can('view_dashboard'));
   const canAccess = (m: ModuleId) => currentUser.isAdmin || allowedModules.includes(m);
-  const canViewDashboard = currentUser.isAdmin || can('view_dashboard');
 
-  const metrics = useMemo(() => {
-    const totalBudget = state.projects.reduce((s, p) => s + p.budget, 0);
-    const totalPOSpend = state.purchaseOrders
-      .filter((po) => po.status !== 'Cancelled')
-      .reduce((s, po) => s + po.totalAmount, 0);
-    const totalSavings = state.purchaseRequests
-      .filter((pr) => pr.status !== 'Rejected')
-      .reduce((s, pr) => s + pr.canvassSavings, 0);
-    const pendingPRs = state.purchaseRequests.filter(
-      (pr) =>
-        pr.status === 'Pending Note' ||
-        pr.status === 'For Recommending Approval' ||
-        pr.status === 'For Final Approval'
-    ).length;
-    const unpaidVouchers = state.vouchers.filter((v) => v.status === 'Pending Approval' || v.status === 'Approved');
-    const unpaidTotal = unpaidVouchers.reduce((s, v) => s + v.invoiceAmount, 0);
-    const toolsBorrowed = state.tools.filter((t) => t.status === 'Borrowed').length;
-    const toolsRepairOrLost = state.tools.filter((t) => t.status === 'Under Repair' || t.status === 'Lost').length;
-
-    const projectSeries = state.projects.map((p) => {
-      const actual = state.purchaseOrders
-        .filter((po) => po.projectId === p.id && po.status !== 'Cancelled')
-        .reduce((s, po) => s + po.totalAmount, 0);
-      return {
-        name: p.name,
-        type: p.type,
-        budget: p.budget,
-        actual,
-      };
-    });
-
-    const catMap = new Map<string, number>();
-    for (const po of state.purchaseOrders.filter((p) => p.status !== 'Cancelled')) {
-      for (const it of po.items) {
-        const mat = state.materials.find((m) => m.id === it.materialId);
-        const cat = mat?.category || 'Other Supplies';
-        catMap.set(cat, (catMap.get(cat) || 0) + it.qty * it.unitPrice);
-      }
+  useEffect(() => {
+    let cancelled = false;
+    if (!canViewDashboard) {
+      setLoading(false);
+      setDeniedError('Dashboard access is restricted to System Administrators, Department Heads, and Vice Presidents.');
+      return;
     }
-    const palette = [activeCompany.themeAccent, activeCompany.themePrimary, '#0EA5E9', '#6366F1', '#10B981'];
-    const categoryDonut = Array.from(catMap.entries()).map(([label, value], i) => ({
-      label,
-      value,
-      color: palette[i % palette.length],
-    }));
 
-    const supplierSpend = state.suppliers
-      .map((sup) => {
-        const total = state.purchaseOrders
-          .filter((po) => po.supplierId === sup.id && po.status !== 'Cancelled')
-          .reduce((s, po) => s + po.totalAmount, 0);
-        const count = state.purchaseOrders.filter((po) => po.supplierId === sup.id).length;
-        return { ...sup, total, count };
+    setLoading(true);
+    setDeniedError('');
+    apiFetchDashboardSummary(authToken)
+      .then((res) => {
+        if (!cancelled) {
+          setSummary(res);
+          if (!res.isConsolidatedAvailable) {
+            setViewMode('active');
+          }
+        }
       })
-      .sort((a, b) => b.total - a.total);
+      .catch((err) => {
+        if (!cancelled) {
+          setDeniedError(err instanceof Error ? err.message : 'Unable to load dashboard summary.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
-    const monthTotals = new Map<string, number>();
-    for (const po of state.purchaseOrders.filter((p) => p.status !== 'Cancelled')) {
-      const m = po.dateIssued.slice(0, 7);
-      monthTotals.set(m, (monthTotals.get(m) || 0) + po.totalAmount);
-    }
-    const trendData = Array.from(monthTotals.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([month, amount]) => ({ month, amount }));
-
-    const utilizationPct = totalBudget > 0 ? Math.round((totalPOSpend / totalBudget) * 1000) / 10 : 0;
-
-    return {
-      totalBudget,
-      totalPOSpend,
-      utilizationPct,
-      totalSavings,
-      pendingPRs,
-      unpaidTotal,
-      unpaidCount: unpaidVouchers.length,
-      toolsBorrowed,
-      toolsRepairOrLost,
-      projectSeries,
-      categoryDonut,
-      supplierSpend,
-      trendData,
+    return () => {
+      cancelled = true;
     };
-  }, [state, activeCompany]);
+  }, [authToken, activeCompany.id, canViewDashboard]);
 
-  if (!canViewDashboard) {
+  if (!canViewDashboard || deniedError) {
     return (
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 max-w-xl mx-auto text-center space-y-4 shadow-xs">
         <div className="w-12 h-12 rounded-2xl brand-soft-surface flex items-center justify-center mx-auto">
@@ -134,7 +117,8 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
           Executive Dashboard Restricted
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Your role in <strong>{activeCompany.name}</strong> does not include the <code className="font-mono">view_dashboard</code> permission. Use your assigned workspace modules below.
+          {deniedError ||
+            `Your role in ${activeCompany.name} does not grant Executive Dashboard access. Use your assigned sidebar modules below.`}
         </p>
         <div className="flex flex-wrap justify-center gap-2 pt-2">
           {allowedModules
@@ -154,266 +138,367 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
     );
   }
 
+  const activeMetrics: DashboardProjectMetrics | null = summary
+    ? viewMode === 'consolidated' && summary.isConsolidatedAvailable
+      ? summary.consolidatedSummary
+      : summary.activeSummary
+    : null;
+
   return (
     <div className="space-y-6">
-      {/* Greeting Header + Quick Actions */}
+      {/* Executive Header + Scope Switch + Management Actions Only */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
             {getGreeting()}, {userName}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {activeCompany.name} ({activeCompany.code}) Executive Business Intelligence · {activeCompany.address}
+            {viewMode === 'consolidated' && summary?.isConsolidatedAvailable
+              ? 'Consolidated RFB & RBI Executive Project Portfolio & Budget Monitoring'
+              : `${activeCompany.name} (${activeCompany.code}) Executive Project Portfolio & Management Overview`}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => setShowSqlWarehouse((v) => !v)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold brand-soft-surface hover:opacity-90 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-          >
-            <Database className="w-3.5 h-3.5" />
-            {showSqlWarehouse ? 'Hide DW Star Schema' : 'SQL Data Warehouse'}
-          </button>
+          {summary?.isConsolidatedAvailable && (
+            <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setViewMode('consolidated')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                  viewMode === 'consolidated'
+                    ? 'bg-white dark:bg-slate-900 brand-text-primary shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                }`}
+              >
+                RFB + RBI Consolidated
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('active')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                  viewMode === 'active'
+                    ? 'bg-white dark:bg-slate-900 brand-text-primary shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                }`}
+              >
+                {activeCompany.code} Only
+              </button>
+            </div>
+          )}
 
-          {canAccess('requisitions') && can('create_transactions') && (
+          {canAccess('projects') && (
             <button
               type="button"
-              onClick={() => onNavigate('requisitions')}
+              onClick={() => onNavigate('projects')}
               className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold brand-btn-primary rounded-xl shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" />
-              New Requisition
+              <FolderKanban className="w-3.5 h-3.5" />
+              Project Management
             </button>
           )}
-          {canAccess('vouchers') && (
-            <button
-              type="button"
-              onClick={() => onNavigate('vouchers')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-            >
-              <DollarSign className="w-3.5 h-3.5 brand-text-accent" />
-              Record Payment
-            </button>
-          )}
+
           {canAccess('reports') && can('generate_reports') && (
             <button
               type="button"
               onClick={() => onNavigate('reports')}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 brand-text-accent" />
-              Generate Report
+              <FileBarChart2 className="w-3.5 h-3.5 brand-text-accent" />
+              Management Reports
             </button>
           )}
         </div>
       </div>
 
-      {/* KPI Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Procurement Spend</div>
-              <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1 tabular-nums">
-                {formatCompactPHP(metrics.totalPOSpend)}
-              </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 font-mono tabular-nums">
-                {metrics.utilizationPct}% of {formatCompactPHP(metrics.totalBudget)} budget
-              </div>
-            </div>
-            <div className="w-10 h-10 rounded-full brand-soft-surface flex items-center justify-center shrink-0">
-              <Building2 className="w-5 h-5" />
-            </div>
-          </div>
+      {loading || !activeMetrics ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center text-xs text-slate-500 dark:text-slate-400">
+          Loading executive project intelligence...
         </div>
-
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Canvass Savings YTD</div>
-              <div className="text-xl font-bold font-mono text-emerald-700 dark:text-emerald-400 mt-1 tabular-nums">
-                {formatPHP(metrics.totalSavings)}
+      ) : (
+        <>
+          {/* 6 Project Summary KPI Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3.5">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>Total Projects</span>
+                <FolderKanban className="w-4 h-4 brand-text-accent" />
               </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
-                Across {state.purchaseRequests.length} {activeCompany.code} Purchase Requests
+              <div className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1.5 tabular-nums">
+                {activeMetrics.totalProjects}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-mono tabular-nums">
+                {formatCompactPHP(activeMetrics.totalBudget)} budget
               </div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-              <TrendingDown className="w-5 h-5" />
+
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>Ongoing Projects</span>
+                <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="font-display text-2xl font-bold text-blue-700 dark:text-blue-400 mt-1.5 tabular-nums">
+                {activeMetrics.ongoingProjects}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 tabular-nums">
+                Avg {activeMetrics.avgProgress}% completion
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>Completed Projects</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="font-display text-2xl font-bold text-emerald-700 dark:text-emerald-400 mt-1.5 tabular-nums">
+                {activeMetrics.completedProjects}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Delivered &amp; closed
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>Not Yet Started</span>
+                <Calendar className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+              </div>
+              <div className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1.5 tabular-nums">
+                {activeMetrics.notYetStartedProjects}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                +{activeMetrics.planningProjects} in Planning
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>On Hold Projects</span>
+                <PauseCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="font-display text-2xl font-bold text-amber-700 dark:text-amber-400 mt-1.5 tabular-nums">
+                {activeMetrics.onHoldProjects}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Paused / awaiting clearance
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs">
+              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>Delayed / Overdue</span>
+                <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+              </div>
+              <div className="font-display text-2xl font-bold text-red-700 dark:text-red-400 mt-1.5 tabular-nums">
+                {activeMetrics.delayedProjects}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Target completion passed
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Accounts Payable Unpaid</div>
-              <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1 tabular-nums">
-                {formatPHP(metrics.unpaidTotal)}
-              </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
-                {metrics.unpaidCount} pending disbursement · {metrics.pendingPRs} PRs awaiting sign-off
-              </div>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-              <ClipboardCheck className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Tools &amp; Fleet Status</div>
-              <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1 tabular-nums">
-                {state.tools.length} Assets
-              </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
-                {metrics.toolsBorrowed} borrowed · {metrics.toolsRepairOrLost} repair/lost alerts
-              </div>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-              <Wrench className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Optional SQL Data Warehouse Star Schema Explorer */}
-      {showSqlWarehouse && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h2 className="font-display text-base font-bold brand-text-primary">
-                {activeCompany.code} SQL Data Warehouse — Multi-Company Star Schema
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                OLTP transactions are company-isolated via <code className="font-mono">company_id</code> and roll up into dimensional BI metrics.
-              </p>
-            </div>
-            <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-              {activeCompany.code} Facts: {state.purchaseOrders.length} POs · {state.vouchers.length} DVs · {state.journalEntries.length} JEs
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/70 dark:bg-slate-950/60">
-              <div className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-2">Star Schema Dimensional Model</div>
-              <div className="grid grid-cols-2 gap-2.5 text-xs">
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5">
-                  <div className="font-mono font-semibold brand-text-primary">fact_procurement</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">company_id, project_key, supplier_key, total_spend, canvass_savings</div>
-                </div>
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5">
-                  <div className="font-mono font-semibold brand-text-primary">fact_vouchers_gl</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">company_id, dv_no, po_no, three_way_match, payable_amt, paid_amt</div>
-                </div>
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5">
-                  <div className="font-mono font-semibold text-slate-700 dark:text-slate-200">dim_project ({activeCompany.code})</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                    {state.projects.slice(0, 3).map((p) => p.name).join(', ') || 'No active projects'}
-                  </div>
-                </div>
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5">
-                  <div className="font-mono font-semibold text-slate-700 dark:text-slate-200">dim_supplier &amp; dim_material</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{state.suppliers.length} suppliers · {state.materials.length} items</div>
+          {/* Project Performance Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
+                    Project Budget vs Committed Cost
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Approved project allocations compared against committed project expenditures ({formatCompactPHP(activeMetrics.totalActualSpend)} / {formatCompactPHP(activeMetrics.totalBudget)})
+                  </p>
                 </div>
               </div>
+              <BudgetVsActualChart
+                data={activeMetrics.projectBudgetSeries.slice(0, 8).map((p) => ({
+                  name: p.companyCode ? `${p.code}` : p.name,
+                  type: `${p.progress}% · ${p.status}`,
+                  budget: p.budget,
+                  actual: p.actual,
+                }))}
+                accentColor={activeCompany.themeAccent}
+              />
             </div>
 
-            <pre className="bg-slate-900 dark:bg-slate-950 text-blue-100 border border-slate-800 rounded-xl p-4 text-[11px] font-mono overflow-x-auto max-h-56 leading-relaxed">
-              {SQL_WAREHOUSE_SCHEMA}
-            </pre>
-          </div>
-        </div>
-      )}
+            <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
+                    Project Status Distribution
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Portfolio breakdown across all project lifecycle stages
+                  </p>
+                </div>
+                <span className="font-mono text-xs font-bold brand-text-primary tabular-nums">
+                  {activeMetrics.avgProgress}% Avg
+                </span>
+              </div>
 
-      {/* Primary BI Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Budget vs Actual Spend</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{activeCompany.name} project allocations vs PO commitments</p>
+              <div className="space-y-3 pt-1">
+                {activeMetrics.statusBreakdown.map((item) => {
+                  const pct =
+                    activeMetrics.totalProjects > 0
+                      ? Math.round((item.count / activeMetrics.totalProjects) * 100)
+                      : 0;
+                  return (
+                    <div key={item.status} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-slate-700 dark:text-slate-300">{item.status}</span>
+                        <span className="font-mono font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
+                          {item.count} ({pct}%)
+                        </span>
+                      </div>
+                      <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${item.count > 0 ? Math.max(6, pct) : 0}%`,
+                            backgroundColor: STATUS_BAR_COLORS[item.status],
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-          <BudgetVsActualChart data={metrics.projectSeries} accentColor={activeCompany.themeAccent} />
-        </div>
 
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs">
-          <div className="mb-4">
-            <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Spend by Material Category</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Distribution across road, bridge, building &amp; ICT</p>
-          </div>
-          <CategoryDonutChart
-            data={metrics.categoryDonut}
-            centerLabel={formatCompactPHP(metrics.totalPOSpend)}
-          />
-        </div>
-      </div>
+          {/* Multi-Company Consolidated Comparison (Visible when assigned RFB + RBI) */}
+          {summary && summary.companyComparisons.length > 1 && (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <Building2 className="w-4 h-4 brand-text-accent" />
+                    Multi-Company Project Portfolio Comparison (RFB &amp; RBI)
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Consolidated project counts, progress velocity, overdue alerts, and budget commitment across your assigned companies.
+                  </p>
+                </div>
+                {canAccess('projects') && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('projects')}
+                    className="text-xs font-semibold brand-text-accent hover:underline inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    Manage All Projects <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
 
-      {/* Second BI Row: Monthly Trend + Top Suppliers */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        <div className="lg:col-span-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs">
-          <div className="mb-3">
-            <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Monthly Procurement Trend</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Cumulative PO spend velocity by month</p>
-          </div>
-          <MonthlyTrendChart
-            data={metrics.trendData}
-            accentColor={activeCompany.themeAccent}
-            primaryColor={activeCompany.themePrimary}
-          />
-        </div>
-
-        <div className="lg:col-span-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100">Top Suppliers Ranking</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Awarded contract volume across {activeCompany.code} accredited vendors</p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left font-semibold">Company</th>
+                      <th className="px-4 py-2.5 text-right font-semibold">Total</th>
+                      <th className="px-4 py-2.5 text-right font-semibold">Ongoing</th>
+                      <th className="px-4 py-2.5 text-right font-semibold">Completed</th>
+                      <th className="px-4 py-2.5 text-right font-semibold">Overdue</th>
+                      <th className="px-4 py-2.5 text-right font-semibold">Avg Progress</th>
+                      <th className="px-4 py-2.5 text-right font-semibold">Approved Budget</th>
+                      <th className="px-4 py-2.5 text-right font-semibold">Committed Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {summary.companyComparisons.map((c) => (
+                      <tr key={c.companyId} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                        <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">
+                          <span className="font-mono font-bold brand-text-primary mr-2">{c.companyCode}</span>
+                          {c.companyName}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums">{c.totalProjects}</td>
+                        <td className="px-4 py-3 text-right font-mono text-blue-700 dark:text-blue-400 font-semibold tabular-nums">
+                          {c.ongoingProjects}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-emerald-700 dark:text-emerald-400 font-semibold tabular-nums">
+                          {c.completedProjects}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono text-red-700 dark:text-red-400 font-semibold tabular-nums">
+                          {c.delayedProjects}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums">{c.avgProgress}%</td>
+                        <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums">{formatPHP(c.totalBudget)}</td>
+                        <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums">{formatPHP(c.actualSpend)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            {canAccess('reports') && can('generate_reports') && (
-              <button
-                type="button"
-                onClick={() => onNavigate('reports')}
-                className="text-xs font-semibold brand-text-accent hover:underline inline-flex items-center gap-1 cursor-pointer"
-              >
-                Full Report <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+          )}
+
+          {/* Delayed / Overdue Projects Watchlist */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                  Schedule Monitoring &amp; Delayed / Overdue Projects
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Projects past target completion date while still incomplete (stored status remains preserved for audit accuracy).
+                </p>
+              </div>
+              {canAccess('projects') && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate('projects')}
+                  className="text-xs font-semibold brand-text-accent hover:underline inline-flex items-center gap-1 cursor-pointer"
+                >
+                  Open Project Registry <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {activeMetrics.overdueProjects.length === 0 ? (
+              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-4 py-3 text-xs text-emerald-800 dark:text-emerald-200">
+                All active projects are currently within their target completion schedules.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left font-semibold">Code</th>
+                      <th className="px-4 py-2.5 text-left font-semibold">Project</th>
+                      <th className="px-4 py-2.5 text-left font-semibold">Company</th>
+                      <th className="px-4 py-2.5 text-left font-semibold">Project Manager</th>
+                      <th className="px-4 py-2.5 text-left font-semibold">Target Date</th>
+                      <th className="px-4 py-2.5 text-left font-semibold">Status</th>
+                      <th className="px-4 py-2.5 text-right font-semibold">Progress</th>
+                      <th className="px-4 py-2.5 text-right font-semibold">Schedule Variance</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {activeMetrics.overdueProjects.map((p) => (
+                      <tr key={p.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                        <td className="px-4 py-3 font-mono font-bold brand-text-primary">{p.code}</td>
+                        <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">{p.name}</td>
+                        <td className="px-4 py-3 font-mono font-bold text-slate-700 dark:text-slate-300">{p.companyCode}</td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{p.manager}</td>
+                        <td className="px-4 py-3 font-mono text-red-700 dark:text-red-400 font-semibold">{p.targetCompletionDate}</td>
+                        <td className="px-4 py-3">
+                          <StatusText status={p.status} />
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums">{p.progress}%</td>
+                        <td className="px-4 py-3 text-right font-mono font-semibold text-red-700 dark:text-red-400 tabular-nums">
+                          {p.daysOverdue}d overdue
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
-
-          <div className="space-y-3">
-            {metrics.supplierSpend.slice(0, 5).map((sup, i) => {
-              const topMax = Math.max(1, metrics.supplierSpend[0]?.total || 1);
-              const pct = Math.round((sup.total / topMax) * 100);
-              return (
-                <div key={sup.id} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-slate-800 dark:text-slate-200 truncate pr-3">
-                      {i + 1}. {sup.name}
-                    </span>
-                    <span className="font-mono font-semibold text-slate-900 dark:text-slate-100 shrink-0 tabular-nums">
-                      {formatPHP(sup.total)}
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${Math.max(4, pct)}%`,
-                        backgroundColor: activeCompany.themeAccent,
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 };

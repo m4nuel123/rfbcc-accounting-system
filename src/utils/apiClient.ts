@@ -1,8 +1,12 @@
 import {
   AccountStatus,
+  Company,
+  DashboardSummaryResponse,
   EmploymentStatus,
   ERPState,
   LoginResponse,
+  Project,
+  ProjectStatus,
   SafeUserAccount,
   SelectCompanyResponse,
   UserCompanyAccess,
@@ -202,3 +206,112 @@ export async function apiAdminDeleteUser(
     token
   );
 }
+
+export async function apiFetchDashboardSummary(token: string): Promise<DashboardSummaryResponse> {
+  return apiFetch<DashboardSummaryResponse>('/erp/dashboard', { method: 'GET' }, token);
+}
+
+export async function apiExportReportCsv(
+  token: string,
+  payload: {
+    filename: string;
+    reportName: string;
+    columns: string[];
+    rows: (string | number)[][];
+  }
+): Promise<{ ok: boolean; filename: string; csv: string }> {
+  return apiFetch<{ ok: boolean; filename: string; csv: string }>(
+    '/erp/reports/export-csv',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    token
+  );
+}
+
+export type EnrichedProject = Project & {
+  companyCode: string;
+  companyName: string;
+  actualSpend: number;
+  isOverdue: boolean;
+  daysOverdue: number;
+};
+
+export async function apiFetchProjects(
+  token: string,
+  scope: 'active' | 'consolidated' = 'consolidated',
+  companyId?: string
+): Promise<{
+  projects: EnrichedProject[];
+  assignedCompanies: Company[];
+  isConsolidatedAvailable: boolean;
+  activeCompany: Company;
+}> {
+  const params = new URLSearchParams({ scope });
+  if (companyId) params.set('companyId', companyId);
+  return apiFetch(`/erp/projects?${params.toString()}`, { method: 'GET' }, token);
+}
+
+export async function apiCreateProject(
+  token: string,
+  payload: Partial<Project>
+): Promise<{ ok: boolean; project: EnrichedProject; state: ERPState }> {
+  return apiFetch(
+    '/erp/projects',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    token
+  );
+}
+
+export async function apiUpdateProject(
+  token: string,
+  projectId: string,
+  payload: Partial<Project>
+): Promise<{ ok: boolean; project: EnrichedProject; state: ERPState }> {
+  return apiFetch(
+    `/erp/projects/${encodeURIComponent(projectId)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    },
+    token
+  );
+}
+
+export async function apiUpdateProjectStatus(
+  token: string,
+  projectId: string,
+  payload: {
+    status: ProjectStatus;
+    progress?: number;
+    actualCompletionDate?: string;
+    remarks?: string;
+  }
+): Promise<{ ok: boolean; project: EnrichedProject; state: ERPState }> {
+  return apiFetch(
+    `/erp/projects/${encodeURIComponent(projectId)}/status`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    },
+    token
+  );
+}
+
+export async function apiDeleteProject(
+  token: string,
+  projectId: string
+): Promise<{ ok: boolean; state: ERPState }> {
+  return apiFetch(
+    `/erp/projects/${encodeURIComponent(projectId)}`,
+    {
+      method: 'DELETE',
+    },
+    token
+  );
+}
+

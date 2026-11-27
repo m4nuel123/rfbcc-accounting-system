@@ -1,8 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { Download, FileBarChart2, Lock, Printer } from 'lucide-react';
-import { Company, Employee, ERPState, PermissionId, PrintDocument } from '../../types/erp';
 import {
-  downloadCSV,
+  Company,
+  Employee,
+  ERPState,
+  PermissionId,
+  PrintDocument,
+  SafeUserAccount,
+  UserCompanyAccess,
+} from '../../types/erp';
+import { apiExportReportCsv } from '../../utils/apiClient';
+import {
   formatPHP,
   getPeriodRange,
   isWithinRange,
@@ -11,6 +19,9 @@ import {
 
 interface ReportsModuleProps {
   state: ERPState;
+  authToken: string;
+  currentUser: SafeUserAccount;
+  activeAccess: UserCompanyAccess;
   currentEmployee: Employee;
   activeCompany: Company;
   can: (perm: PermissionId) => boolean;
@@ -75,6 +86,9 @@ const REPORT_CATALOG: Record<ReportCategory, string[]> = {
 
 export const ReportsModule: React.FC<ReportsModuleProps> = ({
   state,
+  authToken,
+  currentUser,
+  activeAccess,
   currentEmployee,
   activeCompany,
   can,
@@ -88,10 +102,18 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   const [projectFilter, setProjectFilter] = useState('All');
   const [supplierFilter, setSupplierFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const [exportError, setExportError] = useState('');
+
+  const isMgmt =
+    currentUser.isAdmin ||
+    /(head|vice president|\bvp\b|administrator)/i.test(
+      `${currentUser.position || ''} ${currentUser.roleLabel || ''} ${activeAccess.roleLabel || ''}`
+    );
 
   const canGenerate = can('generate_reports');
-  const canExport = can('export_reports');
-  const canPrint = can('print_documents') || canExport;
+  const canExportCsv = isMgmt && can('export_csv');
+  const canPrint = can('print_documents') || can('export_reports') || canGenerate;
 
   const handleCategoryChange = (cat: ReportCategory) => {
     setModuleCat(cat);
@@ -399,6 +421,31 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     supplierFilter === 'All' ? 'All' : state.suppliers.find((s) => s.id === supplierFilter)?.name
   }`;
 
+  const handleExportCsv = async () => {
+    if (!canExportCsv) return;
+    setExportingCsv(true);
+    setExportError('');
+    try {
+      const res = await apiExportReportCsv(authToken, {
+        filename: `${activeCompany.code}_${reportName.replace(/\s+/g, '_')}.csv`,
+        reportName,
+        columns: generated.columns,
+        rows: generated.rows,
+      });
+      const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = res.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Unable to export CSV report.');
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -409,21 +456,16 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </p>
         </div>
 
-        {(canExport || canPrint) && (
+        {(canExportCsv || canPrint) && (
           <div className="flex flex-wrap gap-2">
-            {canExport && (
+            {canExportCsv && (
               <button
                 type="button"
-                onClick={() =>
-                  downloadCSV(
-                    `${activeCompany.code}_${reportName.replace(/\s+/g, '_')}.csv`,
-                    generated.columns,
-                    generated.rows
-                  )
-                }
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
+                disabled={exportingCsv}
+                onClick={handleExportCsv}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl cursor-pointer disabled:opacity-60"
               >
-                <Download className="w-3.5 h-3.5" /> Export CSV
+                <Download className="w-3.5 h-3.5" /> {exportingCsv ? 'Exporting...' : 'Export CSV'}
               </button>
             )}
             {canPrint && (
@@ -450,6 +492,12 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </div>
         )}
       </div>
+
+      {exportError && (
+        <div className="rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 px-4 py-2.5 text-xs text-red-700 dark:text-red-300 font-medium">
+          {exportError}
+        </div>
+      )}
 
       {/* Report Builder Controls */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-xs">

@@ -87,23 +87,23 @@ const RBAC_PRESETS: RbacPreset[] = [
     label: 'Engineering Monitoring',
     department: 'Engineering',
     position: 'Engineering Monitoring',
-    modules: ['dashboard', 'requisitions', 'docTracker'],
-    perms: ['view_dashboard', 'view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions'],
+    modules: ['requisitions', 'docTracker'],
+    perms: ['view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions'],
   },
   {
     key: 'engStaff',
     label: 'Engineering Staff',
     department: 'Engineering',
     position: 'Engineering Staff',
-    modules: ['dashboard', 'requisitions', 'docTracker', 'tools'],
-    perms: ['view_dashboard', 'view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'print_documents'],
+    modules: ['requisitions', 'docTracker', 'tools'],
+    perms: ['view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'print_documents'],
   },
   {
     key: 'purchasingHead',
     label: 'Purchasing / Canvassing Head',
     department: 'Purchasing / Canvassing',
     position: 'Purchasing / Canvassing Head',
-    modules: ['dashboard', 'requisitions', 'canvassing', 'purchasing', 'orders', 'docTracker', 'reports'],
+    modules: ['dashboard', 'projects', 'requisitions', 'canvassing', 'purchasing', 'orders', 'docTracker', 'reports'],
     perms: [
       'view_dashboard',
       'view_transactions',
@@ -116,6 +116,7 @@ const RBAC_PRESETS: RbacPreset[] = [
       'print_documents',
       'generate_reports',
       'export_reports',
+      'export_csv',
     ],
   },
   {
@@ -123,23 +124,23 @@ const RBAC_PRESETS: RbacPreset[] = [
     label: 'Purchasing / Canvassing Staff',
     department: 'Purchasing / Canvassing',
     position: 'Purchasing / Canvassing Staff',
-    modules: ['dashboard', 'requisitions', 'canvassing', 'purchasing', 'orders', 'docTracker'],
-    perms: ['view_dashboard', 'view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'print_documents'],
+    modules: ['requisitions', 'canvassing', 'purchasing', 'orders', 'docTracker'],
+    perms: ['view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'print_documents'],
   },
   {
     key: 'motorpoolStaff',
     label: 'Motorpool Purchasing Staff',
     department: 'Motorpool / Purchasing',
     position: 'Purchasing / Canvassing Staff – Motorpool',
-    modules: ['dashboard', 'requisitions', 'canvassing', 'purchasing', 'orders', 'tools', 'docTracker'],
-    perms: ['view_dashboard', 'view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'print_documents'],
+    modules: ['requisitions', 'canvassing', 'purchasing', 'orders', 'tools', 'docTracker'],
+    perms: ['view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'print_documents'],
   },
   {
     key: 'accountingHead',
     label: 'Accounting Head',
     department: 'Accounting',
     position: 'Accounting Head',
-    modules: ['dashboard', 'vouchers', 'accounting', 'docTracker', 'reports'],
+    modules: ['dashboard', 'projects', 'vouchers', 'accounting', 'docTracker', 'reports'],
     perms: [
       'view_dashboard',
       'view_transactions',
@@ -152,6 +153,7 @@ const RBAC_PRESETS: RbacPreset[] = [
       'print_documents',
       'generate_reports',
       'export_reports',
+      'export_csv',
     ],
   },
   {
@@ -159,16 +161,16 @@ const RBAC_PRESETS: RbacPreset[] = [
     label: 'Accounting Voucher Staff',
     department: 'Accounting',
     position: 'Accounting Voucher Staff',
-    modules: ['dashboard', 'vouchers', 'accounting', 'docTracker'],
-    perms: ['view_dashboard', 'view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'print_documents'],
+    modules: ['vouchers', 'accounting', 'docTracker'],
+    perms: ['view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'print_documents'],
   },
   {
     key: 'financeVp',
     label: 'Finance Vice President',
     department: 'Finance & Executive',
     position: 'Finance Vice President',
-    modules: ['dashboard', 'requisitions', 'canvassing', 'purchasing', 'orders', 'vouchers', 'accounting', 'docTracker', 'reports'],
-    perms: ['view_dashboard', 'view_transactions', 'approve_transactions', 'reject_transactions', 'print_documents', 'generate_reports', 'export_reports'],
+    modules: ['dashboard', 'projects', 'requisitions', 'canvassing', 'purchasing', 'orders', 'vouchers', 'accounting', 'docTracker', 'reports'],
+    perms: ['view_dashboard', 'view_transactions', 'approve_transactions', 'reject_transactions', 'print_documents', 'generate_reports', 'export_reports', 'export_csv'],
   },
   {
     key: 'companyAdmin',
@@ -416,6 +418,8 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
     if (!canCreate || !newProj.name.trim()) return;
     const id = `proj-${Date.now()}`;
     const code = `${activeCompany.code}-PRJ-${String(state.projects.length + 1).padStart(2, '0')}`;
+    const startDate = new Date().toISOString().slice(0, 10);
+    const targetCompletionDate = `${new Date().getFullYear() + 1}-06-30`;
     onUpdateState((prev) => ({
       ...prev,
       projects: [
@@ -427,10 +431,15 @@ export const MasterDataModule: React.FC<MasterDataModuleProps> = ({
           name: newProj.name.trim(),
           type: newProj.type,
           location: newProj.location.trim() || activeCompany.address,
-          budget: Number(newProj.budget) || 0,
-          status: 'Active',
-          startDate: new Date().toISOString().slice(0, 10),
+          clientOwner: `${activeCompany.name} Client`,
+          description: `${newProj.name.trim()} civil & engineering works.`,
           manager: newProj.manager,
+          startDate,
+          targetCompletionDate,
+          budget: Number(newProj.budget) || 0,
+          status: 'Ongoing',
+          progress: 0,
+          remarks: '',
         },
       ],
     }));

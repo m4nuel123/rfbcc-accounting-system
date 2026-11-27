@@ -2,6 +2,7 @@ import { Company, ERPState, ModuleId, PermissionId } from '../types/erp';
 
 export const ALL_MODULES: { id: ModuleId; label: string }[] = [
   { id: 'dashboard', label: 'Dashboard (BI)' },
+  { id: 'projects', label: 'Project Management' },
   { id: 'requisitions', label: 'Requisitions' },
   { id: 'canvassing', label: 'Canvassing' },
   { id: 'purchasing', label: 'Purchasing' },
@@ -15,18 +16,19 @@ export const ALL_MODULES: { id: ModuleId; label: string }[] = [
 ];
 
 export const ALL_PERMISSIONS: { id: PermissionId; label: string; description: string }[] = [
-  { id: 'view_dashboard', label: 'View Dashboard', description: 'View executive BI KPIs and analytics charts' },
-  { id: 'view_transactions', label: 'View', description: 'View operational records, requisitions, vouchers, and ledgers' },
-  { id: 'create_transactions', label: 'Create', description: 'Create new requisitions, quotes, POs, vouchers, JEs, and logs' },
-  { id: 'edit_transactions', label: 'Edit', description: 'Modify open canvasses, drafts, receipts, and engineering/voucher info' },
+  { id: 'view_dashboard', label: 'View Dashboard', description: 'View executive BI KPIs and analytics charts (Admin, Heads & VPs only)' },
+  { id: 'view_transactions', label: 'View', description: 'View operational records, projects, requisitions, vouchers, and ledgers' },
+  { id: 'create_transactions', label: 'Create', description: 'Create new projects, requisitions, quotes, POs, vouchers, JEs, and logs' },
+  { id: 'edit_transactions', label: 'Edit', description: 'Modify open canvasses, projects, drafts, receipts, and voucher info' },
   { id: 'delete_transactions', label: 'Delete / Cancel', description: 'Cancel vouchers or delete master records' },
   { id: 'submit_transactions', label: 'Submit', description: 'Submit requisitions, canvasses, and vouchers into workflow' },
   { id: 'process_transactions', label: 'Process', description: 'Process supplier quotations, POs, receiving, and voucher disbursements' },
   { id: 'approve_transactions', label: 'Approve', description: 'Sign Noted By, Recommending Approval, Final Approval, and DV Approval' },
   { id: 'reject_transactions', label: 'Reject', description: 'Reject purchase requests, borrow requests, or pending workflows' },
-  { id: 'print_documents', label: 'Print', description: 'Print official PR forms, slips, and formatted reports' },
+  { id: 'print_documents', label: 'Print / PDF', description: 'Print official PR forms, slips, and formatted PDF reports' },
   { id: 'generate_reports', label: 'Generate Reports', description: 'Run financial, purchasing, canvassing, and tool reports' },
-  { id: 'export_reports', label: 'Export', description: 'Export CSV files and report packages' },
+  { id: 'export_reports', label: 'Export PDF Reports', description: 'Download formatted PDF reports and packages' },
+  { id: 'export_csv', label: 'Export CSV (Mgmt)', description: 'Export CSV report datasets (Admin, Department Heads & VPs only)' },
   { id: 'manage_users', label: 'Manage Users & RBAC', description: 'Manage user accounts, passwords, companies, and permissions' },
   { id: 'manage_companies', label: 'Manage Companies', description: 'Configure company entities, themes, and branding' },
 ];
@@ -91,15 +93,17 @@ export const DEFAULT_COMPANIES: Company[] = [
   },
 ];
 
-const ENG_MONITORING_MODULES: ModuleId[] = ['dashboard', 'requisitions', 'docTracker'];
-const ENG_STAFF_MODULES: ModuleId[] = ['dashboard', 'requisitions', 'docTracker', 'tools'];
-const PURCHASING_HEAD_MODULES: ModuleId[] = ['dashboard', 'requisitions', 'canvassing', 'purchasing', 'orders', 'docTracker', 'reports'];
-const PURCHASING_STAFF_MODULES: ModuleId[] = ['dashboard', 'requisitions', 'canvassing', 'purchasing', 'orders', 'docTracker'];
-const MOTORPOOL_PURCHASING_MODULES: ModuleId[] = ['dashboard', 'requisitions', 'canvassing', 'purchasing', 'orders', 'tools', 'docTracker'];
-const ACCOUNTING_HEAD_MODULES: ModuleId[] = ['dashboard', 'vouchers', 'accounting', 'docTracker', 'reports'];
-const ACCOUNTING_VOUCHER_MODULES: ModuleId[] = ['dashboard', 'vouchers', 'accounting', 'docTracker'];
+// Staff / Non-Management presets strictly exclude 'dashboard', 'projects', 'view_dashboard', and 'export_csv'
+const ENG_MONITORING_MODULES: ModuleId[] = ['requisitions', 'docTracker'];
+const ENG_STAFF_MODULES: ModuleId[] = ['requisitions', 'docTracker', 'tools'];
+const PURCHASING_HEAD_MODULES: ModuleId[] = ['dashboard', 'projects', 'requisitions', 'canvassing', 'purchasing', 'orders', 'docTracker', 'reports'];
+const PURCHASING_STAFF_MODULES: ModuleId[] = ['requisitions', 'canvassing', 'purchasing', 'orders', 'docTracker'];
+const MOTORPOOL_PURCHASING_MODULES: ModuleId[] = ['requisitions', 'canvassing', 'purchasing', 'orders', 'tools', 'docTracker'];
+const ACCOUNTING_HEAD_MODULES: ModuleId[] = ['dashboard', 'projects', 'vouchers', 'accounting', 'docTracker', 'reports'];
+const ACCOUNTING_VOUCHER_MODULES: ModuleId[] = ['vouchers', 'accounting', 'docTracker'];
 const FINANCE_VP_MODULES: ModuleId[] = [
   'dashboard',
+  'projects',
   'requisitions',
   'canvassing',
   'purchasing',
@@ -110,13 +114,13 @@ const FINANCE_VP_MODULES: ModuleId[] = [
   'reports',
 ];
 
-const ENG_MONITORING_PERMS: PermissionId[] = ['view_dashboard', 'view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions'];
-const ENG_STAFF_PERMS: PermissionId[] = ['view_dashboard', 'view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'print_documents'];
-const PURCHASING_HEAD_PERMS: PermissionId[] = ['view_dashboard', 'view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'approve_transactions', 'reject_transactions', 'print_documents', 'generate_reports', 'export_reports'];
-const PURCHASING_STAFF_PERMS: PermissionId[] = ['view_dashboard', 'view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'print_documents'];
-const ACCOUNTING_HEAD_PERMS: PermissionId[] = ['view_dashboard', 'view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'approve_transactions', 'reject_transactions', 'print_documents', 'generate_reports', 'export_reports'];
-const ACCOUNTING_STAFF_PERMS: PermissionId[] = ['view_dashboard', 'view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'print_documents'];
-const FINANCE_VP_PERMS: PermissionId[] = ['view_dashboard', 'view_transactions', 'approve_transactions', 'reject_transactions', 'print_documents', 'generate_reports', 'export_reports'];
+const ENG_MONITORING_PERMS: PermissionId[] = ['view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions'];
+const ENG_STAFF_PERMS: PermissionId[] = ['view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'print_documents'];
+const PURCHASING_HEAD_PERMS: PermissionId[] = ['view_dashboard', 'view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'approve_transactions', 'reject_transactions', 'print_documents', 'generate_reports', 'export_reports', 'export_csv'];
+const PURCHASING_STAFF_PERMS: PermissionId[] = ['view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'print_documents'];
+const ACCOUNTING_HEAD_PERMS: PermissionId[] = ['view_dashboard', 'view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'approve_transactions', 'reject_transactions', 'print_documents', 'generate_reports', 'export_reports', 'export_csv'];
+const ACCOUNTING_STAFF_PERMS: PermissionId[] = ['view_transactions', 'create_transactions', 'edit_transactions', 'submit_transactions', 'process_transactions', 'print_documents'];
+const FINANCE_VP_PERMS: PermissionId[] = ['view_dashboard', 'view_transactions', 'approve_transactions', 'reject_transactions', 'print_documents', 'generate_reports', 'export_reports', 'export_csv'];
 
 export const INITIAL_ERP_STATE: ERPState = {
   companies: DEFAULT_COMPANIES,
@@ -129,10 +133,15 @@ export const INITIAL_ERP_STATE: ERPState = {
       name: 'Bukidnon Provincial Road',
       type: 'Road',
       location: 'Malaybalay City, Bukidnon',
-      budget: 18500000,
-      status: 'Active',
-      startDate: '2026-02-01',
+      clientOwner: 'Provincial Government of Bukidnon',
+      description: 'Concrete & hot-mix asphalt rehabilitation covering 4.8 km provincial highway corridor with drainage canals.',
       manager: 'Engr. Peter Villanueva',
+      startDate: '2026-02-01',
+      targetCompletionDate: '2026-10-15',
+      budget: 18500000,
+      status: 'Ongoing',
+      progress: 68,
+      remarks: 'Sub-base compaction completed; Item 310 asphalt overlay ongoing (subject to quarry weather window).',
     },
     {
       id: 'proj-2',
@@ -141,10 +150,15 @@ export const INITIAL_ERP_STATE: ERPState = {
       name: 'Pulangi River Bridge',
       type: 'Bridge',
       location: 'Valencia City, Bukidnon',
-      budget: 24000000,
-      status: 'Active',
-      startDate: '2026-03-10',
+      clientOwner: 'DPWH Region X',
+      description: 'Two-span reinforced concrete girder bridge with bored pile foundation and approach embankment protection.',
       manager: 'Engr. Peter Villanueva',
+      startDate: '2026-03-10',
+      targetCompletionDate: '2027-04-30',
+      budget: 24000000,
+      status: 'Ongoing',
+      progress: 52,
+      remarks: 'Abutment & central pier reinforcement pouring on schedule.',
     },
     {
       id: 'proj-3',
@@ -153,10 +167,15 @@ export const INITIAL_ERP_STATE: ERPState = {
       name: 'Bukidnon Civic & Commercial Building',
       type: 'Building',
       location: 'Manolo Fortich, Bukidnon',
-      budget: 14200000,
-      status: 'Active',
-      startDate: '2026-04-15',
+      clientOwner: 'Manolo Fortich Municipal LGU',
+      description: 'Three-storey municipal civic & commercial complex with structural steel roof framing and MEPF fit-out.',
       manager: 'Juan Dela Cruz',
+      startDate: '2026-04-15',
+      targetCompletionDate: '2027-02-28',
+      budget: 14200000,
+      status: 'On Hold',
+      progress: 35,
+      remarks: 'Awaiting revised LGU electrical load permit prior to 3rd-floor slab pour.',
     },
     {
       id: 'proj-4',
@@ -164,11 +183,17 @@ export const INITIAL_ERP_STATE: ERPState = {
       code: 'PRJ-HO-00',
       name: 'RFB Head Office / Administrative',
       type: 'Administrative',
-      location: 'Doongan, Butuan City, Agusan Del Norte',
-      budget: 3500000,
-      status: 'Active',
-      startDate: '2026-01-05',
+      location: 'P-1 A Brgy. Doongan, Butuan City, Agusan Del Norte',
+      clientOwner: 'RFB Construction Corporation',
+      description: 'Headquarters IT infrastructure upgrade, engineering CAD workstations, and administrative operations fit-out.',
       manager: 'Roberto Aquino',
+      startDate: '2026-01-05',
+      targetCompletionDate: '2026-08-30',
+      actualCompletionDate: '2026-08-22',
+      budget: 3500000,
+      status: 'Completed',
+      progress: 100,
+      remarks: 'Completed ahead of schedule and turned over to Central Admin.',
     },
     // RBI Projects
     {
@@ -178,10 +203,15 @@ export const INITIAL_ERP_STATE: ERPState = {
       name: 'Agusan River Floodway & Slope Protection',
       type: 'Road',
       location: 'Butuan City, Agusan Del Norte',
-      budget: 21500000,
-      status: 'Active',
-      startDate: '2026-01-18',
+      clientOwner: 'DPWH Caraga Region XIII',
+      description: 'Sheet steel pile retaining wall and Class A boulder riprap floodway protection along Agusan River bank.',
       manager: 'Engr. Camille Bautista',
+      startDate: '2026-01-18',
+      targetCompletionDate: '2026-10-30',
+      budget: 21500000,
+      status: 'Ongoing',
+      progress: 74,
+      remarks: 'Sheet pile driving 85% complete; boulder riprap armor placement underway.',
     },
     {
       id: 'proj-rbi-2',
@@ -190,10 +220,15 @@ export const INITIAL_ERP_STATE: ERPState = {
       name: 'Cabadbaran Concrete Span Bridge Rehab',
       type: 'Bridge',
       location: 'Cabadbaran City, Agusan Del Norte',
-      budget: 26800000,
-      status: 'Active',
-      startDate: '2026-02-22',
+      clientOwner: 'City Government of Cabadbaran',
+      description: 'Structural deck slab replacement, girder retrofitting, and marine-grade concrete scour protection.',
       manager: 'Engr. Rodnet Velasco',
+      startDate: '2026-02-22',
+      targetCompletionDate: '2027-05-15',
+      budget: 26800000,
+      status: 'Ongoing',
+      progress: 48,
+      remarks: 'Marine-grade concrete batching and 25mm girder rebar fabrication active.',
     },
     {
       id: 'proj-rbi-3',
@@ -202,10 +237,15 @@ export const INITIAL_ERP_STATE: ERPState = {
       name: 'Caraga Trade & Warehouse Complex',
       type: 'Building',
       location: 'Ampayon, Butuan City',
-      budget: 15600000,
-      status: 'Active',
-      startDate: '2026-04-04',
+      clientOwner: 'Caraga Logistics Consortium',
+      description: 'Pre-engineered steel warehouse bays with loading docks, office mezzanine, and perimeter drainage.',
       manager: 'Engr. Camille Bautista',
+      startDate: '2026-12-01',
+      targetCompletionDate: '2027-08-30',
+      budget: 15600000,
+      status: 'Planning',
+      progress: 12,
+      remarks: 'Initial roofing and pozzolan cement canvassing opened; site mobilization next month.',
     },
     {
       id: 'proj-rbi-4',
@@ -213,11 +253,16 @@ export const INITIAL_ERP_STATE: ERPState = {
       code: 'RBI-HO-00',
       name: 'RBI Central Yard & Head Office',
       type: 'Administrative',
-      location: 'Doongan, Butuan City, Agusan Del Norte',
-      budget: 4200000,
-      status: 'Active',
-      startDate: '2026-01-02',
+      location: 'P-1 A Brgy. Doongan, Butuan City, Agusan Del Norte',
+      clientOwner: 'Rodnet Builders Incorporated',
+      description: 'Motorpool yard expansion, survey instrument hub, and RBI administrative office annex.',
       manager: 'Engr. Rodnet Velasco',
+      startDate: '2026-12-15',
+      targetCompletionDate: '2027-06-30',
+      budget: 4200000,
+      status: 'Not Yet Started',
+      progress: 0,
+      remarks: 'Scheduled for Q1 groundbreaking upon yard perimeter clearing.',
     },
   ],
   suppliers: [
@@ -1690,14 +1735,22 @@ CREATE TABLE user_company_permissions (
 );
 
 CREATE TABLE projects (
-  project_id      VARCHAR(20) PRIMARY KEY,
-  company_id      VARCHAR(20) NOT NULL REFERENCES companies(company_id),
-  project_code    VARCHAR(30) NOT NULL,
-  project_name    VARCHAR(150) NOT NULL,
-  project_type    VARCHAR(30) CHECK (project_type IN ('Road','Bridge','Building','Administrative')),
-  location        VARCHAR(150) NOT NULL,
-  approved_budget NUMERIC(14,2) NOT NULL,
-  status          VARCHAR(20) DEFAULT 'Active',
+  project_id              VARCHAR(20) PRIMARY KEY,
+  company_id              VARCHAR(20) NOT NULL REFERENCES companies(company_id),
+  project_code            VARCHAR(30) NOT NULL,
+  project_name            VARCHAR(150) NOT NULL,
+  project_type            VARCHAR(30) CHECK (project_type IN ('Road','Bridge','Building','Administrative')),
+  location                VARCHAR(150) NOT NULL,
+  client_owner            VARCHAR(150) NOT NULL,
+  description             TEXT,
+  project_manager         VARCHAR(120) NOT NULL,
+  start_date              DATE NOT NULL,
+  target_completion_date  DATE NOT NULL,
+  actual_completion_date  DATE,
+  approved_budget         NUMERIC(14,2) NOT NULL,
+  status                  VARCHAR(30) DEFAULT 'Ongoing' CHECK (status IN ('Planning','Not Yet Started','Ongoing','On Hold','Completed','Cancelled')),
+  progress_pct            INT DEFAULT 0 CHECK (progress_pct BETWEEN 0 AND 100),
+  remarks                 TEXT,
   UNIQUE (company_id, project_code)
 );
 
